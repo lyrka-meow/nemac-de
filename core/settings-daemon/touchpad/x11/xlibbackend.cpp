@@ -21,7 +21,9 @@
 #include <X11/extensions/XInput.h>
 #include <X11/extensions/XInput2.h>
 
+#ifdef HAVE_SYNAPTICS
 #include <synaptics-properties.h>
+#endif
 #include <xserver-properties.h>
 
 struct DeviceListDeleter {
@@ -103,10 +105,11 @@ XlibTouchpad *XlibBackend::findTouchpad()
                 return new LibinputTouchpad(m_display.data(), info->id);
             }
 
+#ifdef HAVE_SYNAPTICS
             if (*atom == m_synapticsIdentifierAtom.atom()) {
-                // setMode(TouchpadInputBackendMode::XSynaptics);
                 return new SynapticsTouchpad(m_display.data(), info->id);
             }
+#endif
         }
     }
 
@@ -393,10 +396,12 @@ QVector<QObject *> XlibBackend::getDevices() const
         touchpads.push_back(libinputtouchpad);
     }
 
+#ifdef HAVE_SYNAPTICS
     SynapticsTouchpad *synaptics = dynamic_cast<SynapticsTouchpad *>(m_device.data());
     if (synaptics) {
         touchpads.push_back(synaptics);
     }
+#endif
 
     return touchpads;
 }

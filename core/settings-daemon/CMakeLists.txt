@@ -31,7 +31,9 @@ file (GLOB_RECURSE SRCS
   "touchpad/x11/*.cpp"
 )
 
-if(NOT SYNAPTICS_FOUND)
+if(SYNAPTICS_FOUND)
+    add_definitions(-DHAVE_SYNAPTICS)
+else()
     list(FILTER SRCS EXCLUDE REGEX "synapticstouchpad")
 endif()
 

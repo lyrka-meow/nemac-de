@@ -16,7 +16,9 @@
 #include <QX11Info>
 
 #include "libinputtouchpad.h"
+#ifdef HAVE_SYNAPTICS
 #include "synapticstouchpad.h"
+#endif
 #include "xlibtouchpad.h"
 
 #include <xcb/xcb.h>
