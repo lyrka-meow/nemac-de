@@ -1,0 +1,3 @@
+module Nemac.Screen
+
+plugin nemacscreen_qmlplugins

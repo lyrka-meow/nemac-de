@@ -1,0 +1,2 @@
+module Nemac.Mpris
+plugin nemacmpris_qmlplugins

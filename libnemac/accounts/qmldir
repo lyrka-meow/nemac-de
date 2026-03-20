@@ -1,0 +1,2 @@
+module Nemac.Accounts
+plugin nemacaccounts_qmlplugins

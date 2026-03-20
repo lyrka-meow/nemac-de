@@ -15,20 +15,20 @@ NEMAC_BIN="/usr/local/bin/nemac"
 XINITRC_FILE="$HOME/.xinitrc"
 START_CMD="exec nemac-session"
 
-CUTEFISH_REPOS=(
-    "cutefishos/libcutefish"
-    "cutefishos/fishui"
-    "cutefishos/core"
-    "cutefishos/dock"
-    "cutefishos/statusbar"
-    "cutefishos/launcher"
-    "cutefishos/settings"
-    "cutefishos/filemanager"
-    "cutefishos/screenlocker"
-    "cutefishos/screenshot"
-    "cutefishos/terminal"
-    "cutefishos/kwin-plugins"
-    "cutefishos/wallpapers"
+NEMAC_REPOS=(
+    "nemacde/libnemac"
+    "nemacde/nemacui"
+    "nemacde/core"
+    "nemacde/dock"
+    "nemacde/statusbar"
+    "nemacde/launcher"
+    "nemacde/settings"
+    "nemacde/filemanager"
+    "nemacde/screenlocker"
+    "nemacde/screenshot"
+    "nemacde/terminal"
+    "nemacde/kwin-plugins"
+    "nemacde/wallpapers"
 )
 
 print_header() {
@@ -83,13 +83,13 @@ install_dependencies() {
 }
 
 download_sources() {
-    echo -e "${BLUE}[2/4] Скачивание исходников Cutefish...${NC}"
+    echo -e "${BLUE}[2/4] Скачивание исходников Nemac...${NC}"
     mkdir -p "$NEMAC_SRC"
 
-    local total=${#CUTEFISH_REPOS[@]}
+    local total=${#NEMAC_REPOS[@]}
     local current=0
 
-    for repo in "${CUTEFISH_REPOS[@]}"; do
+    for repo in "${NEMAC_REPOS[@]}"; do
         current=$((current + 1))
         local name=$(basename "$repo")
         local target="$NEMAC_SRC/$name"
@@ -110,8 +110,8 @@ build_sources() {
     echo -e "${BLUE}[3/4] Сборка компонентов...${NC}"
 
     local build_order=(
-        "libcutefish"
-        "fishui"
+        "libnemac"
+        "nemacui"
         "core"
         "kwin-plugins"
         "dock"
@@ -188,7 +188,7 @@ setup_xinitrc() {
         chown "$real_user":"$real_user" "$target"
         echo -e "${GREEN}  Создан $target с командой '$START_CMD'${NC}"
     else
-        if grep -q "nemac-session\|cutefish-session" "$target"; then
+        if grep -q "nemac-session\|nemac-session" "$target"; then
             echo -e "${GREEN}  Nemac уже прописан в $target${NC}"
         else
             sed -i 's/^exec /#exec /g' "$target"
@@ -247,7 +247,7 @@ uninstall_nemac() {
 
     if [ -f "$target" ]; then
         sed -i '/nemac-session/d' "$target"
-        sed -i '/cutefish-session/d' "$target"
+        sed -i '/nemac-session/d' "$target"
         sed -i 's/^#exec /exec /g' "$target"
         echo -e "  ${YELLOW}Очищен $target${NC}"
     fi

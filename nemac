@@ -37,13 +37,13 @@ show_status() {
         echo -e "  Исходники:  ${RED}не скачаны${NC}"
     fi
 
-    if command -v cutefish-session &> /dev/null || command -v nemac-session &> /dev/null; then
+    if command -v nemac-session &> /dev/null || command -v nemac-session &> /dev/null; then
         echo -e "  Сборка:     ${GREEN}установлена${NC}"
     else
         echo -e "  Сборка:     ${YELLOW}не найдена${NC}"
     fi
 
-    if [ -f "$XINITRC_FILE" ] && grep -q "nemac-session\|cutefish-session" "$XINITRC_FILE"; then
+    if [ -f "$XINITRC_FILE" ] && grep -q "nemac-session\|nemac-session" "$XINITRC_FILE"; then
         echo -e "  .xinitrc:   ${GREEN}настроен${NC}"
     else
         echo -e "  .xinitrc:   ${YELLOW}не настроен${NC}"
@@ -73,7 +73,7 @@ uninstall() {
 
     if [ -f "$XINITRC_FILE" ]; then
         sed -i '/nemac-session/d' "$XINITRC_FILE"
-        sed -i '/cutefish-session/d' "$XINITRC_FILE"
+        sed -i '/nemac-session/d' "$XINITRC_FILE"
         sed -i 's/^#exec /exec /g' "$XINITRC_FILE"
         echo -e "  ${YELLOW}Очищен $XINITRC_FILE${NC}"
     fi
@@ -123,7 +123,7 @@ setup_xinitrc() {
         echo "$start_cmd" > "$XINITRC_FILE"
         echo -e "${GREEN}Создан $XINITRC_FILE${NC}"
     else
-        if grep -q "nemac-session\|cutefish-session" "$XINITRC_FILE"; then
+        if grep -q "nemac-session\|nemac-session" "$XINITRC_FILE"; then
             echo -e "${GREEN}Уже настроен.${NC}"
         else
             sed -i 's/^exec /#exec /g' "$XINITRC_FILE"

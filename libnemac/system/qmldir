@@ -1,0 +1,3 @@
+module Nemac.System
+
+plugin nemacsystem_qmlplugins

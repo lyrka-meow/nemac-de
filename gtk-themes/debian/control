@@ -1,0 +1,13 @@
+Source: nemac-gtk-themes
+Section: gnome
+Priority: optional
+Maintainer: NemacDE <support@nemacde.com>
+Build-Depends:
+Standards-Version: 3.9.6
+Homepage: https://nemacde.com
+Vcs-Git: https://github.com/nemacde
+
+Package: nemac-gtk-themes
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: NemacDE GTK Themes

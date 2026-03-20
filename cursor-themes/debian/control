@@ -1,0 +1,13 @@
+Source: nemac-cursor-themes
+Section: kde
+Priority: optional
+Maintainer: Reion Wong <reion@nemacde.com>
+Build-Depends:
+Standards-Version: 3.9.6
+Homepage: https://nemacde.com
+Vcs-Git: https://github.com/nemacde
+
+Package: nemac-cursor-themes
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: NemacDE Cursor Theme

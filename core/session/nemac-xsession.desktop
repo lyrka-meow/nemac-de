@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Exec=nemac-session
+TryExec=nemac-session
+Name=Nemac Desktop
+Keywords=session
+Comment=session

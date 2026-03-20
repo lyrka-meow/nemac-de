@@ -1,0 +1,3 @@
+module Nemac.NetworkManagement
+
+plugin nemacnm_qmlplugins

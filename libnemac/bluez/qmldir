@@ -1,0 +1,4 @@
+module Nemac.Bluez
+plugin nemacbluez_qmlplugins
+
+DevicesModel 1.0 DevicesModel.qml

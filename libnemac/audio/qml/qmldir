@@ -1,0 +1,4 @@
+module Nemac.Audio
+plugin nemacaudio_qmlplugins
+
+PulseObjectFilterModel 1.0 PulseObjectFilterModel.qml

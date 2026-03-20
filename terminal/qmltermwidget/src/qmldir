@@ -1,0 +1,3 @@
+module Nemac.TermWidget
+plugin nemacqmltermwidget
+QMLTermScrollbar 1.0 QMLTermScrollbar.qml

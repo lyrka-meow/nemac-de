@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=PolicyKit Handler
+TryExec=nemac-polkit-agent
+Exec=nemac-polkit-agent
+NoDisplay=true
