@@ -94,6 +94,7 @@ target_link_libraries(${PROJECT_NAME}
         PkgConfig::FontConfig
         ${FREETYPE_LIBRARIES}
         ${ICU_LDFLAGS}
+        icuuc icui18n
         Libcrypt::Libcrypt
 
         ${X11_LIBRARIES}

@@ -61,3 +61,8 @@ void Application::onPressed(QKeySequence keySeq)
         QProcess::startDetached("nemac-launcher", QStringList());
     }
 }
+
+void Application::onReleased(QKeySequence keySeq)
+{
+    Q_UNUSED(keySeq);
+}

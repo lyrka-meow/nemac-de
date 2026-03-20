@@ -116,9 +116,11 @@ target_link_libraries(nemac-statusbar
 )
 
 file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
-qt5_add_translation(QM_FILES ${CMAKE_SOURCE_DIR}/src ${TS_FILES})
-add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
-add_dependencies(nemac-statusbar translations)
+if(TS_FILES)
+    qt5_add_translation(QM_FILES ${TS_FILES})
+    add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
+    add_dependencies(nemac-statusbar translations)
+    install(FILES ${QM_FILES} DESTINATION /usr/share/nemac-statusbar/translations)
+endif()
 
 install(TARGETS nemac-statusbar RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${QM_FILES} DESTINATION /usr/share/nemac-statusbar/translations)

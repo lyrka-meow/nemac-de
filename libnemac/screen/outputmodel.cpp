@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "confighandler.h"
 
+#include <KScreen/Mode>
 #include <QRect>
 
 OutputModel::OutputModel(ConfigHandler *configHandler)
