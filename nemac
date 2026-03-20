@@ -52,7 +52,9 @@ show_menu() {
             1)
                 echo ""
                 echo -e "  ${YELLOW}Запускаю установщик...${NC}"
-                sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh)"
+                curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh -o /tmp/nemac-installer.sh
+                sudo bash /tmp/nemac-installer.sh
+                rm -f /tmp/nemac-installer.sh
                 ;;
             2)
                 echo ""
@@ -70,7 +72,9 @@ show_menu() {
                 echo ""
                 read -rp "  Удалить Nemac DE? (y/N): " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh)" -- --uninstall
+                    curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh -o /tmp/nemac-installer.sh
+                    sudo bash /tmp/nemac-installer.sh --uninstall
+                    rm -f /tmp/nemac-installer.sh
                 fi
                 ;;
             0)
