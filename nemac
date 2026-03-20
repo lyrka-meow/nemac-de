@@ -9,7 +9,6 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 NEMAC_DIR="/opt/nemac-de"
-XINITRC_FILE="$HOME/.xinitrc"
 
 print_header() {
     clear
@@ -20,161 +19,63 @@ print_header() {
     echo ' | |\  |  __/ | | | | | (_| | (__ | |_| | |___ '
     echo ' |_| \_|\___|_| |_| |_|\__,_|\___||____/|_____|'
     echo -e "${NC}"
-    echo -e "${BOLD}  Nemac DE — Управление${NC}"
-    echo -e "${CYAN}=================================================${NC}"
     echo ""
 }
 
 show_status() {
-    echo -e "  ${BOLD}Статус:${NC}"
-
-    if [ -d "$NEMAC_DIR/.git" ]; then
-        echo -e "  Исходники:  ${GREEN}скачаны${NC}"
-    else
-        echo -e "  Исходники:  ${RED}не скачаны${NC}"
+    local ver="не установлен"
+    if [ -f "/etc/nemac" ]; then
+        ver=$(grep "Version" /etc/nemac 2>/dev/null | cut -d= -f2)
     fi
 
     if command -v nemac-session &> /dev/null; then
-        echo -e "  Сборка:     ${GREEN}установлена${NC}"
+        echo -e "  Статус: ${GREEN}установлен (v$ver)${NC}"
     else
-        echo -e "  Сборка:     ${YELLOW}не найдена${NC}"
-    fi
-
-    if [ -f "/etc/nemac" ]; then
-        local ver
-        ver=$(grep "Version" /etc/nemac 2>/dev/null | cut -d= -f2)
-        echo -e "  Версия:     ${GREEN}$ver${NC}"
-    fi
-
-    if [ -f "$XINITRC_FILE" ] && grep -q "nemac-session" "$XINITRC_FILE"; then
-        echo -e "  .xinitrc:   ${GREEN}настроен${NC}"
-    else
-        echo -e "  .xinitrc:   ${YELLOW}не настроен${NC}"
-    fi
-
-    echo ""
-}
-
-reinstall() {
-    echo -e "${YELLOW}Запускаю полный установщик...${NC}"
-    local installer_url="https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh"
-    sudo bash -c "$(curl -fsSL "$installer_url")"
-}
-
-uninstall() {
-    echo -e "${RED}Удаление Nemac DE...${NC}"
-    echo ""
-    read -rp "  Вы уверены? (y/N): " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo -e "  ${GREEN}Отменено.${NC}"
-        sleep 1
-        return
-    fi
-
-    echo -e "  ${YELLOW}Удаляю исходники и сборку...${NC}"
-    sudo rm -rf "$NEMAC_DIR"
-
-    echo -e "  ${YELLOW}Удаляю конфигурации...${NC}"
-    sudo rm -f /etc/nemac /etc/nemacde
-
-    echo -e "  ${YELLOW}Удаляю ресурсы...${NC}"
-    sudo rm -rf /usr/share/wallpapers/nemac
-    sudo rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
-    sudo rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
-
-    if [ -f "$XINITRC_FILE" ]; then
-        sed -i '/nemac-session/d' "$XINITRC_FILE"
-        sed -i 's/^#exec /exec /g' "$XINITRC_FILE"
-        echo -e "  ${YELLOW}Очищен $XINITRC_FILE${NC}"
-    fi
-
-    echo ""
-    echo -e "${GREEN}Nemac DE удалён.${NC}"
-    echo -e "Команда ${YELLOW}nemac${NC} останется доступной для переустановки."
-    echo ""
-    read -rp "Нажмите Enter..."
-}
-
-open_sources() {
-    if [ -d "$NEMAC_DIR" ]; then
-        echo -e "${GREEN}Исходники находятся в: ${YELLOW}$NEMAC_DIR${NC}"
-        echo ""
-        ls -1 --color "$NEMAC_DIR" | grep -v '^\.' | grep -v '^installer\|^nemac$\|^LICENSE\|^README'
-    else
-        echo -e "${RED}Исходники не скачаны. Установите Nemac DE сначала.${NC}"
+        echo -e "  Статус: ${RED}не установлен${NC}"
     fi
     echo ""
-    read -rp "Нажмите Enter..."
-}
-
-update_sources() {
-    if [ ! -d "$NEMAC_DIR/.git" ]; then
-        echo -e "${RED}Исходники не найдены. Установите Nemac DE сначала.${NC}"
-        read -rp "Нажмите Enter..."
-        return
-    fi
-
-    echo -e "${BLUE}Обновление исходников...${NC}"
-    cd "$NEMAC_DIR"
-    if sudo git pull; then
-        echo -e "${GREEN}Исходники обновлены.${NC}"
-        echo -e "${YELLOW}Для пересборки используйте установщик (пункт 1).${NC}"
-    else
-        echo -e "${RED}Ошибка обновления.${NC}"
-    fi
-    echo ""
-    read -rp "Нажмите Enter..."
-}
-
-setup_xinitrc() {
-    local start_cmd="exec nemac-session"
-
-    if [ ! -f "$XINITRC_FILE" ]; then
-        echo "$start_cmd" > "$XINITRC_FILE"
-        echo -e "${GREEN}Создан $XINITRC_FILE${NC}"
-    else
-        if grep -q "nemac-session" "$XINITRC_FILE"; then
-            echo -e "${GREEN}Уже настроен.${NC}"
-        else
-            sed -i 's/^exec /#exec /g' "$XINITRC_FILE"
-            echo "$start_cmd" >> "$XINITRC_FILE"
-            echo -e "${GREEN}Добавлено '$start_cmd' в $XINITRC_FILE${NC}"
-        fi
-    fi
-    echo ""
-    read -rp "Нажмите Enter..."
 }
 
 show_menu() {
     while true; do
         print_header
         show_status
-        echo -e "  ${BOLD}Действия:${NC}"
+
+        echo -e "  ${GREEN}1${NC})  Переустановить / Обновить"
+        echo -e "  ${GREEN}2${NC})  Обновить исходники"
+        echo -e "  ${RED}3${NC})  Удалить Nemac DE"
+        echo -e "  ${RED}0${NC})  Выход"
         echo ""
-        echo -e "  ${GREEN}1${NC}) Переустановить / Обновить Nemac DE"
-        echo -e "  ${GREEN}2${NC}) Настроить ~/.xinitrc"
-        echo -e "  ${GREEN}3${NC}) Обновить исходники (git pull)"
-        echo -e "  ${GREEN}4${NC}) Показать путь к исходникам"
-        echo -e "  ${RED}5${NC}) Удалить Nemac DE"
-        echo -e "  ${RED}0${NC}) Выход"
-        echo ""
-        read -rp "  Ваш выбор [0-5]: " choice
+        read -rp "  > " choice
 
         case $choice in
-            1) reinstall ;;
-            2) setup_xinitrc ;;
-            3) update_sources ;;
-            4) open_sources ;;
-            5) uninstall ;;
+            1)
+                echo ""
+                echo -e "  ${YELLOW}Запускаю установщик...${NC}"
+                sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh)"
+                ;;
+            2)
+                echo ""
+                if [ -d "$NEMAC_DIR/.git" ]; then
+                    echo -e "  ${BLUE}Обновляю исходники...${NC}"
+                    cd "$NEMAC_DIR" && sudo git pull && echo -e "  ${GREEN}Готово.${NC}" || echo -e "  ${RED}Ошибка.${NC}"
+                    echo -e "  ${YELLOW}Для пересборки выберите пункт 1.${NC}"
+                else
+                    echo -e "  ${RED}Nemac не установлен.${NC}"
+                fi
+                echo ""
+                read -rp "  Нажмите Enter..."
+                ;;
+            3)
+                echo ""
+                read -rp "  Удалить Nemac DE? (y/N): " confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh)" -- --uninstall
+                fi
+                ;;
             0)
                 echo ""
-                echo -e "${GREEN}  Пока!${NC}"
-                echo ""
                 exit 0
-                ;;
-            *)
-                echo -e "${RED}  Неверный выбор.${NC}"
-                sleep 1
                 ;;
         esac
     done
