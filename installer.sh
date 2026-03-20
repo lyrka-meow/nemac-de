@@ -160,8 +160,8 @@ install_assets() {
     echo -e "  ${BLUE}[4/6]${NC} Устанавливаю обои, иконки, темы..."
 
     if [ -d "$NEMAC_DIR/wallpapers/sources" ]; then
-        mkdir -p /usr/share/wallpapers/nemac
-        cp -f "$NEMAC_DIR/wallpapers/sources"/*.jpg /usr/share/wallpapers/nemac/ 2>/dev/null || true
+        mkdir -p /usr/share/backgrounds/nemacde
+        cp -f "$NEMAC_DIR/wallpapers/sources"/*.jpg /usr/share/backgrounds/nemacde/ 2>/dev/null || true
     fi
 
     if [ -d "$NEMAC_DIR/icons/Crule" ]; then
@@ -233,7 +233,7 @@ uninstall_nemac() {
     rm -rf "$NEMAC_DIR"
     rm -f "$NEMAC_BIN"
     rm -f /etc/nemac /etc/nemacde
-    rm -rf /usr/share/wallpapers/nemac
+    rm -rf /usr/share/backgrounds/nemacde
     rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
     rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
 
