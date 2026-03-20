@@ -41,9 +41,8 @@ show_menu() {
         print_header
         show_status
 
-        echo -e "  ${GREEN}1${NC})  Переустановить / Обновить"
-        echo -e "  ${GREEN}2${NC})  Обновить исходники"
-        echo -e "  ${RED}3${NC})  Удалить Nemac DE"
+        echo -e "  ${GREEN}1${NC})  Обновить"
+        echo -e "  ${RED}2${NC})  Удалить Nemac DE"
         echo -e "  ${RED}0${NC})  Выход"
         echo ""
         read -rp "  > " choice
@@ -51,24 +50,14 @@ show_menu() {
         case $choice in
             1)
                 echo ""
-                echo -e "  ${YELLOW}Запускаю установщик...${NC}"
+                echo -e "  ${YELLOW}Скачиваю обновления и пересобираю...${NC}"
                 curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh -o /tmp/nemac-installer.sh
                 sudo bash /tmp/nemac-installer.sh
                 rm -f /tmp/nemac-installer.sh
-                ;;
-            2)
-                echo ""
-                if [ -d "$NEMAC_DIR/.git" ]; then
-                    echo -e "  ${BLUE}Обновляю исходники...${NC}"
-                    cd "$NEMAC_DIR" && sudo git pull && echo -e "  ${GREEN}Готово.${NC}" || echo -e "  ${RED}Ошибка.${NC}"
-                    echo -e "  ${YELLOW}Для пересборки выберите пункт 1.${NC}"
-                else
-                    echo -e "  ${RED}Nemac не установлен.${NC}"
-                fi
                 echo ""
                 read -rp "  Нажмите Enter..."
                 ;;
-            3)
+            2)
                 echo ""
                 read -rp "  Удалить Nemac DE? (y/N): " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
