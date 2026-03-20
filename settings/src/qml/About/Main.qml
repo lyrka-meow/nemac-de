@@ -43,43 +43,11 @@ ItemPage {
                 height: NemacUI.Units.largeSpacing
             }
 
-            Image {
-                Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
-                width: 140
-                height: 72
-                sourceSize: Qt.size(width, height)
-                source: "qrc:/images/logo.svg"
-            }
-
-            Item {
-                height: NemacUI.Units.smallSpacing
-            }
-
             Label {
                 Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
-                text: "<b>Openfish</b>"
-                visible: !about.isNemacDE
-                font.pointSize: 22
+                text: "<b>Nemac DE</b>"
+                font.pointSize: 28
                 color: "#3385FF"
-                leftPadding: NemacUI.Units.largeSpacing * 2
-                rightPadding: NemacUI.Units.largeSpacing * 2
-            }
-
-            Image {
-                Layout.preferredWidth: 167
-                Layout.preferredHeight: 26
-                sourceSize: Qt.size(500, 76)
-                source: "qrc:/images/logo.png"
-                Layout.alignment: Qt.AlignHCenter
-                visible: about.isNemacDE
-                asynchronous: true
-            }
-
-            Label {
-                text: qsTr("Built on %1").arg(about.prettyProductName)
-                visible: !about.isNemacDE
-                Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
-                color: NemacUI.Theme.disabledTextColor
             }
 
             Item {
