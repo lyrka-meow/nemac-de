@@ -31,6 +31,10 @@ file (GLOB_RECURSE SRCS
   "touchpad/x11/*.cpp"
 )
 
+if(NOT SYNAPTICS_FOUND)
+    list(FILTER SRCS EXCLUDE REGEX "synapticstouchpad")
+endif()
+
 set(SOURCES ${SRCS})
 set(HEADERS "")
 set(FORMS "")
