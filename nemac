@@ -9,7 +9,6 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 NEMAC_DIR="/opt/nemac-de"
-NEMAC_SRC="$NEMAC_DIR/src"
 XINITRC_FILE="$HOME/.xinitrc"
 
 print_header() {
@@ -29,21 +28,25 @@ print_header() {
 show_status() {
     echo -e "  ${BOLD}Статус:${NC}"
 
-    if [ -d "$NEMAC_SRC" ]; then
-        local count
-        count=$(ls -1d "$NEMAC_SRC"/*/ 2>/dev/null | wc -l)
-        echo -e "  Исходники:  ${GREEN}скачаны ($count компонентов)${NC}"
+    if [ -d "$NEMAC_DIR/.git" ]; then
+        echo -e "  Исходники:  ${GREEN}скачаны${NC}"
     else
         echo -e "  Исходники:  ${RED}не скачаны${NC}"
     fi
 
-    if command -v nemac-session &> /dev/null || command -v nemac-session &> /dev/null; then
+    if command -v nemac-session &> /dev/null; then
         echo -e "  Сборка:     ${GREEN}установлена${NC}"
     else
         echo -e "  Сборка:     ${YELLOW}не найдена${NC}"
     fi
 
-    if [ -f "$XINITRC_FILE" ] && grep -q "nemac-session\|nemac-session" "$XINITRC_FILE"; then
+    if [ -f "/etc/nemac" ]; then
+        local ver
+        ver=$(grep "Version" /etc/nemac 2>/dev/null | cut -d= -f2)
+        echo -e "  Версия:     ${GREEN}$ver${NC}"
+    fi
+
+    if [ -f "$XINITRC_FILE" ] && grep -q "nemac-session" "$XINITRC_FILE"; then
         echo -e "  .xinitrc:   ${GREEN}настроен${NC}"
     else
         echo -e "  .xinitrc:   ${YELLOW}не настроен${NC}"
@@ -71,8 +74,16 @@ uninstall() {
     echo -e "  ${YELLOW}Удаляю исходники и сборку...${NC}"
     sudo rm -rf "$NEMAC_DIR"
 
+    echo -e "  ${YELLOW}Удаляю конфигурации...${NC}"
+    sudo rm -f /etc/nemac /etc/nemacde
+
+    echo -e "  ${YELLOW}Удаляю ресурсы...${NC}"
+    sudo rm -rf /usr/share/wallpapers/nemac
+    sudo rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
+    sudo rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
+    sudo rm -rf /usr/share/sddm/themes/nemac
+
     if [ -f "$XINITRC_FILE" ]; then
-        sed -i '/nemac-session/d' "$XINITRC_FILE"
         sed -i '/nemac-session/d' "$XINITRC_FILE"
         sed -i 's/^#exec /exec /g' "$XINITRC_FILE"
         echo -e "  ${YELLOW}Очищен $XINITRC_FILE${NC}"
@@ -86,10 +97,10 @@ uninstall() {
 }
 
 open_sources() {
-    if [ -d "$NEMAC_SRC" ]; then
-        echo -e "${GREEN}Исходники находятся в: ${YELLOW}$NEMAC_SRC${NC}"
+    if [ -d "$NEMAC_DIR" ]; then
+        echo -e "${GREEN}Исходники находятся в: ${YELLOW}$NEMAC_DIR${NC}"
         echo ""
-        ls -1 "$NEMAC_SRC"
+        ls -1 --color "$NEMAC_DIR" | grep -v '^\.' | grep -v '^installer\|^nemac$\|^LICENSE\|^README'
     else
         echo -e "${RED}Исходники не скачаны. Установите Nemac DE сначала.${NC}"
     fi
@@ -98,20 +109,20 @@ open_sources() {
 }
 
 update_sources() {
-    if [ ! -d "$NEMAC_SRC" ]; then
+    if [ ! -d "$NEMAC_DIR/.git" ]; then
         echo -e "${RED}Исходники не найдены. Установите Nemac DE сначала.${NC}"
         read -rp "Нажмите Enter..."
         return
     fi
 
     echo -e "${BLUE}Обновление исходников...${NC}"
-    for dir in "$NEMAC_SRC"/*/; do
-        local name
-        name=$(basename "$dir")
-        echo -e "  ${GREEN}Обновляю $name...${NC}"
-        cd "$dir" && git pull --quiet 2>/dev/null || echo -e "  ${RED}Ошибка обновления $name${NC}"
-    done
-    echo -e "${GREEN}Готово.${NC}"
+    cd "$NEMAC_DIR"
+    if sudo git pull; then
+        echo -e "${GREEN}Исходники обновлены.${NC}"
+        echo -e "${YELLOW}Для пересборки используйте установщик (пункт 1).${NC}"
+    else
+        echo -e "${RED}Ошибка обновления.${NC}"
+    fi
     echo ""
     read -rp "Нажмите Enter..."
 }
@@ -123,7 +134,7 @@ setup_xinitrc() {
         echo "$start_cmd" > "$XINITRC_FILE"
         echo -e "${GREEN}Создан $XINITRC_FILE${NC}"
     else
-        if grep -q "nemac-session\|nemac-session" "$XINITRC_FILE"; then
+        if grep -q "nemac-session" "$XINITRC_FILE"; then
             echo -e "${GREEN}Уже настроен.${NC}"
         else
             sed -i 's/^exec /#exec /g' "$XINITRC_FILE"

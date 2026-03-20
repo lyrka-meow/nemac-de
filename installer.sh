@@ -10,25 +10,35 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 NEMAC_DIR="/opt/nemac-de"
-NEMAC_SRC="$NEMAC_DIR/src"
 NEMAC_BIN="/usr/local/bin/nemac"
-XINITRC_FILE="$HOME/.xinitrc"
+NEMAC_REPO="https://github.com/lyrka-meow/nemac-de.git"
+NEMAC_VERSION="0.8"
 START_CMD="exec nemac-session"
 
-NEMAC_REPOS=(
-    "nemacde/libnemac"
-    "nemacde/nemacui"
-    "nemacde/core"
-    "nemacde/dock"
-    "nemacde/statusbar"
-    "nemacde/launcher"
-    "nemacde/settings"
-    "nemacde/filemanager"
-    "nemacde/screenlocker"
-    "nemacde/screenshot"
-    "nemacde/terminal"
-    "nemacde/kwin-plugins"
-    "nemacde/wallpapers"
+BUILD_ORDER=(
+    "libnemac"
+    "nemacui"
+    "core"
+    "kwin-plugins"
+    "qt-plugins"
+    "dock"
+    "statusbar"
+    "launcher"
+    "settings"
+    "filemanager"
+    "screenlocker"
+    "screenshot"
+    "terminal"
+    "texteditor"
+    "calculator"
+)
+
+INSTALL_COMPONENTS=(
+    "wallpapers"
+    "icons"
+    "cursor-themes"
+    "gtk-themes"
+    "sddm-theme"
 )
 
 print_header() {
@@ -62,74 +72,53 @@ check_arch() {
 }
 
 install_dependencies() {
-    echo -e "${BLUE}[1/4] Установка зависимостей...${NC}"
+    echo -e "${BLUE}[1/5] Установка зависимостей...${NC}"
     pacman -S --needed --noconfirm \
         git cmake make gcc \
-        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-tools \
-        kwin kwindowsystem kidletime \
+        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-tools qt5-svg \
+        extra-cmake-modules \
+        kwin kwindowsystem kidletime kdecoration \
         polkit polkit-qt5 \
-        networkmanager-qt \
+        networkmanager-qt modemmanager-qt \
         xorg-server xorg-xinit xorg-xrdb \
-        libxcb xcb-util xcb-util-wm \
-        pulseaudio libpulse \
+        libxcb xcb-util xcb-util-wm xcb-util-keysyms \
+        pulseaudio libpulse libcanberra libcanberra-pulse \
         bluez bluez-qt \
-        solid \
-        kio \
+        solid kio \
         xdg-utils \
-        freetype2 fontconfig 2>&1 | while read -r line; do
+        freetype2 fontconfig \
+        sound-theme-freedesktop \
+        sddm 2>&1 | while read -r line; do
             echo -e "  ${line}"
         done
     echo -e "${GREEN}  Зависимости установлены.${NC}"
 }
 
 download_sources() {
-    echo -e "${BLUE}[2/4] Скачивание исходников Nemac...${NC}"
-    mkdir -p "$NEMAC_SRC"
+    echo -e "${BLUE}[2/5] Скачивание исходников Nemac...${NC}"
 
-    local total=${#NEMAC_REPOS[@]}
-    local current=0
+    if [ -d "$NEMAC_DIR/.git" ]; then
+        echo -e "  ${YELLOW}Репозиторий уже скачан, обновляю...${NC}"
+        cd "$NEMAC_DIR" && git pull --quiet 2>/dev/null || true
+    else
+        rm -rf "$NEMAC_DIR"
+        echo -e "  ${GREEN}Клонирую репозиторий...${NC}"
+        git clone --quiet "$NEMAC_REPO" "$NEMAC_DIR"
+    fi
 
-    for repo in "${NEMAC_REPOS[@]}"; do
-        current=$((current + 1))
-        local name=$(basename "$repo")
-        local target="$NEMAC_SRC/$name"
-
-        if [ -d "$target" ]; then
-            echo -e "  ${YELLOW}[$current/$total]${NC} $name — уже скачан, обновляю..."
-            cd "$target" && git pull --quiet 2>/dev/null || true
-        else
-            echo -e "  ${GREEN}[$current/$total]${NC} Скачиваю $name..."
-            git clone --quiet "https://github.com/$repo.git" "$target" 2>/dev/null
-        fi
-    done
-
-    echo -e "${GREEN}  Все исходники скачаны в $NEMAC_SRC${NC}"
+    echo -e "${GREEN}  Исходники скачаны в $NEMAC_DIR${NC}"
 }
 
 build_sources() {
-    echo -e "${BLUE}[3/4] Сборка компонентов...${NC}"
+    echo -e "${BLUE}[3/5] Сборка компонентов...${NC}"
 
-    local build_order=(
-        "libnemac"
-        "nemacui"
-        "core"
-        "kwin-plugins"
-        "dock"
-        "statusbar"
-        "launcher"
-        "settings"
-        "filemanager"
-        "screenlocker"
-        "screenshot"
-        "terminal"
-    )
-
-    local total=${#build_order[@]}
+    local total=${#BUILD_ORDER[@]}
     local current=0
+    local failed=()
 
-    for component in "${build_order[@]}"; do
+    for component in "${BUILD_ORDER[@]}"; do
         current=$((current + 1))
-        local src_dir="$NEMAC_SRC/$component"
+        local src_dir="$NEMAC_DIR/$component"
 
         if [ ! -d "$src_dir" ]; then
             echo -e "  ${YELLOW}[$current/$total]${NC} $component — не найден, пропускаю"
@@ -137,42 +126,98 @@ build_sources() {
         fi
 
         echo -e "  ${GREEN}[$current/$total]${NC} Собираю $component..."
+        rm -rf "$src_dir/build"
         mkdir -p "$src_dir/build"
         cd "$src_dir/build"
 
-        if cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /dev/null 2>&1; then
-            if make -j"$(nproc)" > /dev/null 2>&1; then
+        if cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
+            if make -j"$(nproc)" > /tmp/nemac-make-$component.log 2>&1; then
                 make install > /dev/null 2>&1
-                echo -e "  ${GREEN}  ✓ $component собран и установлен${NC}"
+                echo -e "    ${GREEN}✓ $component собран и установлен${NC}"
             else
-                echo -e "  ${RED}  ✗ $component — ошибка сборки (make)${NC}"
+                echo -e "    ${RED}✗ $component — ошибка сборки (make)${NC}"
+                echo -e "    ${YELLOW}Лог: /tmp/nemac-make-$component.log${NC}"
+                failed+=("$component")
             fi
         else
-            echo -e "  ${RED}  ✗ $component — ошибка конфигурации (cmake)${NC}"
+            echo -e "    ${RED}✗ $component — ошибка конфигурации (cmake)${NC}"
+            echo -e "    ${YELLOW}Лог: /tmp/nemac-cmake-$component.log${NC}"
+            failed+=("$component")
         fi
     done
+
+    if [ ${#failed[@]} -gt 0 ]; then
+        echo ""
+        echo -e "  ${YELLOW}Не удалось собрать: ${failed[*]}${NC}"
+        echo -e "  ${YELLOW}Проверьте логи в /tmp/nemac-*.log${NC}"
+    fi
 
     echo -e "${GREEN}  Сборка завершена.${NC}"
 }
 
-install_nemac_cmd() {
-    echo -e "${BLUE}[4/4] Установка команды 'nemac'...${NC}"
+install_assets() {
+    echo -e "${BLUE}[4/5] Установка ресурсов (обои, иконки, темы)...${NC}"
 
-    local script_url="https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/nemac"
-    if [ -f "$(dirname "$0")/nemac" ] 2>/dev/null; then
-        cp "$(dirname "$0")/nemac" "$NEMAC_BIN"
-    else
-        curl -fsSL "$script_url" -o "$NEMAC_BIN" 2>/dev/null || {
-            # Если curl не удался, создаем fallback
-            cat > "$NEMAC_BIN" << 'NEMAC_SCRIPT'
-#!/bin/bash
-echo "Nemac CLI — используйте установщик для переустановки"
-NEMAC_SCRIPT
-        }
+    # Обои
+    if [ -d "$NEMAC_DIR/wallpapers/sources" ]; then
+        mkdir -p /usr/share/wallpapers/nemac
+        cp -f "$NEMAC_DIR/wallpapers/sources"/*.jpg /usr/share/wallpapers/nemac/ 2>/dev/null || true
+        echo -e "    ${GREEN}✓ Обои установлены${NC}"
     fi
 
+    # Иконки
+    if [ -d "$NEMAC_DIR/icons/Crule" ]; then
+        cp -rf "$NEMAC_DIR/icons/Crule" /usr/share/icons/
+        cp -rf "$NEMAC_DIR/icons/Crule-dark" /usr/share/icons/ 2>/dev/null || true
+        gtk-update-icon-cache /usr/share/icons/Crule 2>/dev/null || true
+        echo -e "    ${GREEN}✓ Иконки установлены${NC}"
+    fi
+
+    # Курсоры
+    if [ -d "$NEMAC_DIR/cursor-themes/nemac-light" ]; then
+        cp -rf "$NEMAC_DIR/cursor-themes/nemac-light" /usr/share/icons/
+        cp -rf "$NEMAC_DIR/cursor-themes/nemac-dark" /usr/share/icons/ 2>/dev/null || true
+        echo -e "    ${GREEN}✓ Темы курсоров установлены${NC}"
+    fi
+
+    # GTK-темы
+    if [ -d "$NEMAC_DIR/gtk-themes/Nemac" ]; then
+        mkdir -p /usr/share/themes
+        cp -rf "$NEMAC_DIR/gtk-themes/Nemac" /usr/share/themes/
+        cp -rf "$NEMAC_DIR/gtk-themes/Nemac-light" /usr/share/themes/ 2>/dev/null || true
+        cp -rf "$NEMAC_DIR/gtk-themes/Nemac-dark" /usr/share/themes/ 2>/dev/null || true
+        echo -e "    ${GREEN}✓ GTK-темы установлены${NC}"
+    fi
+
+    # SDDM-тема
+    if [ -d "$NEMAC_DIR/sddm-theme" ]; then
+        mkdir -p /usr/share/sddm/themes/nemac
+        cp -rf "$NEMAC_DIR/sddm-theme"/* /usr/share/sddm/themes/nemac/ 2>/dev/null || true
+        echo -e "    ${GREEN}✓ SDDM-тема установлена${NC}"
+    fi
+
+    echo -e "${GREEN}  Ресурсы установлены.${NC}"
+}
+
+install_nemac_cmd() {
+    echo -e "${BLUE}[5/5] Установка CLI и конфигурации...${NC}"
+
+    cp "$NEMAC_DIR/nemac" "$NEMAC_BIN"
     chmod +x "$NEMAC_BIN"
-    echo -e "${GREEN}  Команда 'nemac' установлена. Введите 'nemac' в терминале для управления.${NC}"
+
+    # /etc/nemac — версия и флаг для About в настройках
+    cat > /etc/nemac << CONF
+[General]
+Version=$NEMAC_VERSION
+CONF
+
+    cat > /etc/nemacde << CONF
+[General]
+NemacDE=true
+CONF
+
+    echo -e "    ${GREEN}✓ Команда 'nemac' установлена${NC}"
+    echo -e "    ${GREEN}✓ Конфигурация /etc/nemac создана (v$NEMAC_VERSION)${NC}"
 }
 
 setup_xinitrc() {
@@ -188,7 +233,7 @@ setup_xinitrc() {
         chown "$real_user":"$real_user" "$target"
         echo -e "${GREEN}  Создан $target с командой '$START_CMD'${NC}"
     else
-        if grep -q "nemac-session\|nemac-session" "$target"; then
+        if grep -q "nemac-session" "$target"; then
             echo -e "${GREEN}  Nemac уже прописан в $target${NC}"
         else
             sed -i 's/^exec /#exec /g' "$target"
@@ -206,10 +251,11 @@ full_install() {
     install_dependencies
     download_sources
     build_sources
+    install_assets
     install_nemac_cmd
     echo ""
     echo -e "${GREEN}=====================================${NC}"
-    echo -e "${GREEN}  Nemac DE успешно установлен!${NC}"
+    echo -e "${GREEN}  Nemac DE v$NEMAC_VERSION установлен!${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo ""
     echo -e "Следующий шаг: настройте ${YELLOW}.xinitrc${NC} (пункт 2 в меню)"
@@ -224,7 +270,7 @@ download_only() {
     echo ""
     download_sources
     echo ""
-    echo -e "${GREEN}Исходники скачаны в: ${YELLOW}$NEMAC_SRC${NC}"
+    echo -e "${GREEN}Исходники скачаны в: ${YELLOW}$NEMAC_DIR${NC}"
     echo -e "Можете изучить код или собрать вручную."
     echo ""
     read -rp "Нажмите Enter для продолжения..."
@@ -240,13 +286,21 @@ uninstall_nemac() {
     echo -e "  ${YELLOW}Удаляю команду nemac...${NC}"
     rm -f "$NEMAC_BIN"
 
+    echo -e "  ${YELLOW}Удаляю конфигурации...${NC}"
+    rm -f /etc/nemac /etc/nemacde
+
+    echo -e "  ${YELLOW}Удаляю ресурсы...${NC}"
+    rm -rf /usr/share/wallpapers/nemac
+    rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
+    rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
+    rm -rf /usr/share/sddm/themes/nemac
+
     local real_user="${SUDO_USER:-$USER}"
     local real_home
     real_home=$(eval echo "~$real_user")
     local target="$real_home/.xinitrc"
 
     if [ -f "$target" ]; then
-        sed -i '/nemac-session/d' "$target"
         sed -i '/nemac-session/d' "$target"
         sed -i 's/^#exec /exec /g' "$target"
         echo -e "  ${YELLOW}Очищен $target${NC}"
@@ -263,7 +317,7 @@ show_menu() {
         print_header
         echo -e "  ${BOLD}Выберите действие:${NC}"
         echo ""
-        echo -e "  ${GREEN}1${NC}) Полная установка (зависимости + исходники + сборка)"
+        echo -e "  ${GREEN}1${NC}) Полная установка (зависимости + сборка + ресурсы)"
         echo -e "  ${GREEN}2${NC}) Настроить ~/.xinitrc (для запуска через startx)"
         echo -e "  ${GREEN}3${NC}) Только скачать исходники (без сборки)"
         echo -e "  ${GREEN}4${NC}) Установить команду 'nemac' (CLI управление)"
