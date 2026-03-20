@@ -73,24 +73,61 @@ check_arch() {
 
 install_dependencies() {
     echo -e "${BLUE}[1/5] Установка зависимостей...${NC}"
-    pacman -S --needed --noconfirm \
-        git cmake make gcc \
-        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-tools qt5-svg \
-        extra-cmake-modules \
-        kwin kwindowsystem kidletime kdecoration \
-        polkit polkit-qt5 \
-        networkmanager-qt modemmanager-qt \
-        xorg-server xorg-xinit xorg-xrdb \
-        libxcb xcb-util xcb-util-wm xcb-util-keysyms \
-        pulseaudio libpulse libcanberra libcanberra-pulse \
-        bluez bluez-qt \
-        solid kio \
-        xdg-utils \
-        freetype2 fontconfig \
-        sound-theme-freedesktop \
-        sddm 2>&1 | while read -r line; do
-            echo -e "  ${line}"
-        done
+
+    # Сборочные зависимости (нужны только для компиляции)
+    local build_deps=(
+        git cmake make gcc
+        qt5-tools
+        extra-cmake-modules
+    )
+
+    # Рантайм-зависимости (нужны для работы DE)
+    local runtime_deps=(
+        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg
+        kwin kwindowsystem kidletime kdecoration
+        polkit polkit-qt5
+        networkmanager-qt modemmanager-qt
+        libxcb xcb-util xcb-util-wm xcb-util-keysyms
+        libpulse
+        bluez bluez-qt
+        solid kio
+        xdg-utils
+        freetype2 fontconfig
+    )
+
+    # Xorg — ставим только если нет ни xorg-server, ни wayland-сессии
+    if ! pacman -Qi xorg-server &>/dev/null; then
+        echo -e "  ${YELLOW}Xorg не найден, добавляю в зависимости...${NC}"
+        runtime_deps+=(xorg-server xorg-xinit xorg-xrdb)
+    else
+        echo -e "  ${GREEN}Xorg уже установлен, пропускаю${NC}"
+        # xorg-xinit и xorg-xrdb могут быть не установлены
+        if ! pacman -Qi xorg-xinit &>/dev/null; then
+            runtime_deps+=(xorg-xinit)
+        fi
+        if ! pacman -Qi xorg-xrdb &>/dev/null; then
+            runtime_deps+=(xorg-xrdb)
+        fi
+    fi
+
+    # Аудио — не трогаем если уже есть pipewire-pulse или pulseaudio
+    if pacman -Qi pipewire-pulse &>/dev/null; then
+        echo -e "  ${GREEN}PipeWire (pulse) уже установлен, используем его${NC}"
+    elif pacman -Qi pulseaudio &>/dev/null; then
+        echo -e "  ${GREEN}PulseAudio уже установлен, используем его${NC}"
+    else
+        echo -e "  ${YELLOW}Аудио-сервер не найден, ставлю pipewire-pulse...${NC}"
+        runtime_deps+=(pipewire-pulse)
+    fi
+
+    # libcanberra — для звуковых событий
+    if ! pacman -Qi libcanberra &>/dev/null; then
+        runtime_deps+=(libcanberra)
+    fi
+
+    pacman -S --needed --noconfirm "${build_deps[@]}" "${runtime_deps[@]}" 2>&1 | while read -r line; do
+        echo -e "  ${line}"
+    done
     echo -e "${GREEN}  Зависимости установлены.${NC}"
 }
 
