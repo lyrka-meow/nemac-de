@@ -60,27 +60,39 @@ qt5_add_dbus_adaptor(DBUS_SOURCES
 set_source_files_properties(${DBUS_SOURCES} PROPERTIES SKIP_AUTOGEN ON)
 
 add_executable(${TARGET} ${SOURCES} ${DBUS_SOURCES} ${HEADERS} ${FORMS} ${RESOURCES})
-target_link_libraries(${TARGET}
-        Qt5::Core
-        Qt5::Gui
-        Qt5::Widgets
-        Qt5::DBus
-        Qt5::X11Extras
-        Qt5::Xml
-        ${X11_LIBRARIES}
-        X11::X11
-        X11::Xi
-        X11::XCB
-        ${XCB_LIBRARIES}
-        PkgConfig::XORGLIBINPUT
-        PkgConfig::XORGSERVER
-        PkgConfig::SYNAPTICS
+
+set(SETTINGS_DAEMON_LIBS
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Widgets
+    Qt5::DBus
+    Qt5::X11Extras
+    Qt5::Xml
+    ${X11_LIBRARIES}
+    X11::X11
+    X11::Xi
+    X11::XCB
+    ${XCB_LIBRARIES}
 )
 
-file(GLOB TS_FILES translations/*.ts)
-qt5_create_translation(QM_FILES ${TS_FILES})
-add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
-add_dependencies(${TARGET} translations)
+if(XORGLIBINPUT_FOUND)
+    list(APPEND SETTINGS_DAEMON_LIBS PkgConfig::XORGLIBINPUT)
+endif()
+if(XORGSERVER_FOUND)
+    list(APPEND SETTINGS_DAEMON_LIBS PkgConfig::XORGSERVER)
+endif()
+if(SYNAPTICS_FOUND)
+    list(APPEND SETTINGS_DAEMON_LIBS PkgConfig::SYNAPTICS)
+endif()
+
+target_link_libraries(${TARGET} ${SETTINGS_DAEMON_LIBS})
+
+file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
+if(TS_FILES)
+    qt5_create_translation(QM_FILES ${TS_FILES})
+    add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
+    add_dependencies(${TARGET} translations)
+    install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${TARGET}/translations)
+endif()
 
 install(TARGETS ${TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${TARGET}/translations)

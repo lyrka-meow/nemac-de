@@ -43,7 +43,7 @@ set(NETWORKMGR_SRCS
 )
 
 find_package(KF5NetworkManagerQt REQUIRED)
-find_package(KF5ModemManagerQt REQUIRED)
+find_package(KF5ModemManagerQt QUIET)
 
 add_library(nemacnm_qmlplugins SHARED ${NETWORKMGR_SRCS})
 generate_export_header(nemacnm_qmlplugins EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/networkmanager_export.h BASE_NAME NetworkManager)
@@ -55,8 +55,12 @@ target_link_libraries (nemacnm_qmlplugins
     Qt5::DBus
 
     KF5::NetworkManagerQt
-    KF5::ModemManagerQt
 )
+
+if(KF5ModemManagerQt_FOUND)
+    target_link_libraries(nemacnm_qmlplugins KF5::ModemManagerQt)
+    target_compile_definitions(nemacnm_qmlplugins PRIVATE -DWITH_MODEMMANAGER_SUPPORT)
+endif()
 
 install(TARGETS nemacnm_qmlplugins DESTINATION ${INSTALL_QMLDIR}/Nemac/NetworkManagement)
 install(FILES qmldir DESTINATION ${INSTALL_QMLDIR}/Nemac/NetworkManagement)

@@ -83,7 +83,7 @@ else()
 endif()
 
 # Install translations
-file(GLOB TS_FILES translations/*.ts)
+file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
 qt5_create_translation(QM_FILES ${TS_FILES})
 add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
 add_dependencies(nemac-screenlocker translations)

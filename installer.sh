@@ -70,13 +70,16 @@ install_dependencies() {
         qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg
         kwin kwindowsystem kidletime kdecoration
         polkit polkit-qt5
-        networkmanager-qt modemmanager-qt
+        networkmanager-qt
         libxcb xcb-util xcb-util-wm xcb-util-keysyms
         libpulse
         bluez bluez-qt
         solid kio
         xdg-utils
         freetype2 fontconfig
+        xorg-server-devel
+        syntax-highlighting5
+        libxcrypt icu
     )
 
     if ! pacman -Qi xorg-server &>/dev/null; then

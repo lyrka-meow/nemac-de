@@ -25,5 +25,12 @@ endif()
 # set(CMAKE_AUTORCC ON)
 
 # add_subdirectory(blur)
-add_subdirectory(decoration)
+
+find_package(KDecoration2 QUIET)
+if(KDecoration2_FOUND)
+    add_subdirectory(decoration)
+else()
+    message(STATUS "KDecoration2 not found, skipping decoration plugin")
+endif()
+
 add_subdirectory(roundedwindow)

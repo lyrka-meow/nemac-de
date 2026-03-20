@@ -20,7 +20,7 @@ find_package(Libcrypt REQUIRED)
 # find_package(QApt REQUIRED)
 
 find_package(KF5NetworkManagerQt REQUIRED)
-find_package(KF5ModemManagerQt REQUIRED)
+find_package(KF5ModemManagerQt QUIET)
 find_package(KF5Config)
 
 pkg_search_module(FontConfig REQUIRED fontconfig IMPORTED_TARGET)
@@ -89,7 +89,6 @@ target_link_libraries(${PROJECT_NAME}
         # NemacUI
 
         KF5::NetworkManagerQt
-        KF5::ModemManagerQt
         KF5::ConfigCore
 
         PkgConfig::FontConfig
@@ -105,10 +104,13 @@ target_link_libraries(${PROJECT_NAME}
         # QApt
 )
 
-file(GLOB TS_FILES translations/*.ts)
-qt5_create_translation(QM_FILES ${TS_FILES})
-add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
-add_dependencies(${PROJECT_NAME} translations)
+file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
+if(TS_FILES)
+    qt5_create_translation(QM_FILES ${TS_FILES})
+    add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
+    add_dependencies(${PROJECT_NAME} translations)
+    install(FILES ${QM_FILES} DESTINATION /usr/share/${PROJECT_NAME}/translations)
+endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -117,5 +119,3 @@ install(FILES
     DESTINATION /usr/share/applications/
     COMPONENT Runtime
 )
-
-install(FILES ${QM_FILES} DESTINATION /usr/share/${PROJECT_NAME}/translations)

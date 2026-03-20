@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt5 COMPONENTS Core Quick REQUIRED)
-find_package(KF5SyntaxHighlighting)
+find_package(KF5SyntaxHighlighting QUIET)
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -30,5 +30,11 @@ target_link_libraries(nemac-texteditor
   PRIVATE
   Qt5::Core
   Qt5::Quick
-  KF5::SyntaxHighlighting
-  )
+)
+
+if(KF5SyntaxHighlighting_FOUND)
+    target_link_libraries(nemac-texteditor PRIVATE KF5::SyntaxHighlighting)
+    target_compile_definitions(nemac-texteditor PRIVATE -DWITH_SYNTAX_HIGHLIGHTING)
+endif()
+
+install(TARGETS nemac-texteditor RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
