@@ -32,4 +32,3 @@ target_link_libraries(${TARGET}
 )
 
 install(TARGETS ${TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES nemac-xsession.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/xsessions/)

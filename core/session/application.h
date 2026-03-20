@@ -33,8 +33,6 @@ class Application : public QApplication
 public:
     explicit Application(int &argc, char **argv);
 
-    bool wayland() const;
-
 public slots:
     void logout() {
         m_processManager->logout();
@@ -81,8 +79,6 @@ private:
     ProcessManager *m_processManager;
     NetworkProxyManager *m_networkProxyManager;
     Power m_power;
-
-    bool m_wayland;
 };
 
 #endif // APPLICATION_H

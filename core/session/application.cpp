@@ -70,7 +70,6 @@ bool isSessionVariable(const QByteArray &name)
 {
     // Check is variable is specific to session.
     return name == "DISPLAY" || name == "XAUTHORITY" || //
-        name == "WAYLAND_DISPLAY" || name == "WAYLAND_SOCKET" || //
         name.startsWith("XDG_");
 }
 
@@ -85,23 +84,11 @@ Application::Application(int &argc, char **argv)
     : QApplication(argc, argv)
     , m_processManager(new ProcessManager(this))
     , m_networkProxyManager(new NetworkProxyManager)
-    , m_wayland(false)
 {
     new SessionAdaptor(this);
 
-    // connect to D-Bus and register as an object:
     QDBusConnection::sessionBus().registerService(QStringLiteral("com.nemac.Session"));
     QDBusConnection::sessionBus().registerObject(QStringLiteral("/Session"), this);
-
-    QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Nemac Session"));
-    parser.addHelpOption();
-
-    QCommandLineOption waylandOption(QStringList() << "w" << "wayland" << "Wayland Mode");
-    parser.addOption(waylandOption);
-    parser.process(*this);
-
-    m_wayland = parser.isSet(waylandOption);
 
     createConfigDirectory();
     initKWinConfig();
@@ -131,11 +118,6 @@ Application::Application(int &argc, char **argv)
 
     QTimer::singleShot(50, this, &Application::updateUserDirs);
     QTimer::singleShot(100, m_processManager, &ProcessManager::start);
-}
-
-bool Application::wayland() const
-{
-    return m_wayland;
 }
 
 void Application::launch(const QString &exec, const QStringList &args)

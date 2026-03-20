@@ -38,7 +38,6 @@ INSTALL_COMPONENTS=(
     "icons"
     "cursor-themes"
     "gtk-themes"
-    "sddm-theme"
 )
 
 print_header() {
@@ -226,13 +225,6 @@ install_assets() {
         echo -e "    ${GREEN}✓ GTK-темы установлены${NC}"
     fi
 
-    # SDDM-тема
-    if [ -d "$NEMAC_DIR/sddm-theme" ]; then
-        mkdir -p /usr/share/sddm/themes/nemac
-        cp -rf "$NEMAC_DIR/sddm-theme"/* /usr/share/sddm/themes/nemac/ 2>/dev/null || true
-        echo -e "    ${GREEN}✓ SDDM-тема установлена${NC}"
-    fi
-
     echo -e "${GREEN}  Ресурсы установлены.${NC}"
 }
 
@@ -330,7 +322,6 @@ uninstall_nemac() {
     rm -rf /usr/share/wallpapers/nemac
     rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
     rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
-    rm -rf /usr/share/sddm/themes/nemac
 
     local real_user="${SUDO_USER:-$USER}"
     local real_home
