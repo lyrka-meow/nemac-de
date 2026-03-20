@@ -1,5 +1,5 @@
 project (nemacdecoration)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(KF5CoreAddons REQUIRED)
 find_package(KF5Config REQUIRED)

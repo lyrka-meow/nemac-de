@@ -30,7 +30,7 @@ target_link_libraries(nemac-polkit-agent
 )
 
 file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
-qt5_create_translation(QM_FILES ${TS_FILES})
+qt5_add_translation(QM_FILES ${TS_FILES})
 add_custom_target(polkit-agent-translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
 add_dependencies(nemac-polkit-agent polkit-agent-translations)
 

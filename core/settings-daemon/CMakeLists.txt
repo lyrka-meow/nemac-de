@@ -89,7 +89,7 @@ target_link_libraries(${TARGET} ${SETTINGS_DAEMON_LIBS})
 
 file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
 if(TS_FILES)
-    qt5_create_translation(QM_FILES ${TS_FILES})
+    qt5_add_translation(QM_FILES ${TS_FILES})
     add_custom_target(translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
     add_dependencies(${TARGET} translations)
     install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${TARGET}/translations)

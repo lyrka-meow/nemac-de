@@ -27,7 +27,8 @@ if (NOT OPENGL)
 endif (NOT OPENGL)
 
 if (NOT EFFECTS_H OR NOT KWIN_GLUTILS OR NOT KWIN_EFFECTS OR NOT OPENGL)
-    message(FATAL_ERROR "cant continue")
+    message(STATUS "Missing KWin effect dependencies, skipping roundedwindow")
+    return()
 endif (NOT EFFECTS_H OR NOT KWIN_GLUTILS OR NOT KWIN_EFFECTS OR NOT OPENGL)
 
 add_library(roundedwindow MODULE

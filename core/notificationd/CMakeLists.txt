@@ -38,7 +38,7 @@ install(TARGETS nemac-notificationd
 )
 
 file(GLOB TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/translations/*.ts)
-qt5_create_translation(QM_FILES ${TS_FILES})
+qt5_add_translation(QM_FILES ${TS_FILES})
 add_custom_target(notificationd_translations DEPENDS ${QM_FILES} SOURCES ${TS_FILES})
 add_dependencies(nemac-notificationd notificationd_translations)
 
