@@ -54,7 +54,7 @@ ControlCenterDialog {
             return "audio-volume-high-symbolic"
     }
 
-su    onWidthChanged: adjustCorrectLocation()
+    onWidthChanged: adjustCorrectLocation()
     onHeightChanged: adjustCorrectLocation()
     onPositionChanged: adjustCorrectLocation()
 

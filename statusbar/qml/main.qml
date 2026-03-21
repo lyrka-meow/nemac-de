@@ -256,7 +256,7 @@ Item {
         StandardItem {
             id: controler
 
-            checked: controlCenter.item.visible
+            checked: controlCenter.item ? controlCenter.item.visible : false
             animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: _controlerLayout.implicitWidth + NemacUI.Units.largeSpacing
@@ -266,6 +266,8 @@ Item {
             }
 
             function toggleDialog() {
+                if (!controlCenter.item)
+                    return
                 if (controlCenter.item.visible)
                     controlCenter.item.close()
                 else {
@@ -286,8 +288,8 @@ Item {
 
                 Image {
                     id: volumeIcon
-                    visible: controlCenter.item.defaultSink
-                    source: "qrc:/images/" + (rootItem.darkMode ? "dark/" : "light/") + controlCenter.item.volumeIconName + ".svg"
+                    visible: controlCenter.item && controlCenter.item.defaultSink
+                    source: controlCenter.item ? ("qrc:/images/" + (rootItem.darkMode ? "dark/" : "light/") + controlCenter.item.volumeIconName + ".svg") : ""
                     width: rootItem.iconSize
                     height: width
                     sourceSize: Qt.size(width, height)
