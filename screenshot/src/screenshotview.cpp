@@ -27,6 +27,7 @@
 #include <QQmlContext>
 #include <QScreen>
 #include <QPixmap>
+#include <QPainter>
 #include <QStandardPaths>
 #include <QDateTime>
 
@@ -42,15 +43,28 @@ ScreenshotView::ScreenshotView(QQuickView *parent)
     setScreen(qGuiApp->primaryScreen());
     setResizeMode(QQuickView::SizeRootObjectToView);
     setSource(QUrl("qrc:/qml/main.qml"));
-    setGeometry(screen()->geometry());
 }
 
 void ScreenshotView::start()
 {
-    // 保存图片
-    QPixmap p = qGuiApp->primaryScreen()->grabWindow(0);
-    p.save("/tmp/nemac-screenshot.png");
+    QRect virtualGeometry;
+    for (QScreen *s : qGuiApp->screens())
+        virtualGeometry = virtualGeometry.united(s->geometry());
 
+    QPixmap fullShot(virtualGeometry.size() * qGuiApp->primaryScreen()->devicePixelRatio());
+    fullShot.fill(Qt::black);
+
+    QPainter painter(&fullShot);
+    for (QScreen *s : qGuiApp->screens()) {
+        QPixmap p = s->grabWindow(0);
+        QPoint offset = s->geometry().topLeft() - virtualGeometry.topLeft();
+        painter.drawPixmap(offset * s->devicePixelRatio(), p);
+    }
+    painter.end();
+
+    fullShot.save("/tmp/nemac-screenshot.png");
+
+    setGeometry(virtualGeometry);
     setVisible(true);
     setKeyboardGrabEnabled(true);
 

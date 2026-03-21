@@ -135,8 +135,13 @@ ItemPage {
                         model: screen.outputModel
 
                         TabButton {
-                            text: model.display
-                            width: implicitWidth
+                            text: {
+                                var name = model.display
+                                if (name.length > 20)
+                                    name = name.substring(0, 17) + "..."
+                                return name
+                            }
+                            width: screenTabBar.width / _screenView.count
                         }
                     }
 
