@@ -71,5 +71,4 @@ void Clipboard::onDataChanged()
     newMimeData->setData("application/x-nemac-clipboard", QByteArray("1"));
 
     m_qtClipboard->setMimeData(newMimeData);
-    newMimeData->deleteLater();
 }
