@@ -189,6 +189,8 @@ install_assets() {
 install_config() {
     echo -e "  ${BLUE}[5/6]${NC} Настраиваю систему..."
 
+    rm -f /usr/share/applications/cutefish-*.desktop 2>/dev/null
+
     cp "$NEMAC_DIR/nemac" "$NEMAC_BIN"
     chmod +x "$NEMAC_BIN"
 
