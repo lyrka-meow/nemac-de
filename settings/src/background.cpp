@@ -1,14 +1,32 @@
 #include "background.h"
 #include <QtConcurrent>
+#include <QFileDialog>
+#include <QStandardPaths>
+#include <QFile>
+#include <QFileInfo>
+#include <QDateTime>
+
+static QString userWallpaperDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+           + "/nemacde/wallpapers";
+}
 
 static QVariantList getBackgroundPaths()
 {
     QVariantList list;
-    QDirIterator it("/usr/share/backgrounds/nemacde", QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        QString bg = it.next();
-        list.append(QVariant(bg));
+
+    QStringList dirs;
+    dirs << "/usr/share/backgrounds/nemacde" << userWallpaperDir();
+
+    for (const QString &dirPath : dirs) {
+        QDirIterator it(dirPath, QStringList() << "*.jpg" << "*.png" << "*.jpeg" << "*.webp",
+                        QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            list.append(QVariant(it.next()));
+        }
     }
+
     std::sort(list.begin(), list.end());
     return list;
 }
@@ -76,4 +94,42 @@ QString Background::backgroundColor()
 void Background::setBackgroundColor(const QString &color)
 {
     m_interface.call("setBackgroundColor", QVariant::fromValue(color));
+}
+
+QString Background::customWallpaperDir() const
+{
+    return userWallpaperDir();
+}
+
+void Background::addWallpaper()
+{
+    QStringList files = QFileDialog::getOpenFileNames(
+        nullptr,
+        tr("Select Wallpapers"),
+        QStandardPaths::writableLocation(QStandardPaths::PicturesLocation),
+        tr("Images (*.jpg *.jpeg *.png *.webp)"));
+
+    if (files.isEmpty())
+        return;
+
+    QString destDir = customWallpaperDir();
+    QDir().mkpath(destDir);
+
+    QString lastCopied;
+    for (const QString &file : files) {
+        QFileInfo info(file);
+        QString dest = destDir + "/" + info.fileName();
+
+        if (QFile::exists(dest))
+            dest = destDir + "/" + QString::number(QDateTime::currentMSecsSinceEpoch())
+                   + "_" + info.fileName();
+
+        QFile::copy(file, dest);
+        lastCopied = dest;
+    }
+
+    emit backgroundsListChanged();
+
+    if (!lastCopied.isEmpty())
+        setBackground(lastCopied);
 }

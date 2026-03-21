@@ -72,6 +72,14 @@ ItemPage {
                     }
                 }
 
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("Add Wallpaper")
+                    visible: background.backgroundType === 0
+                    icon.name: "list-add"
+                    onClicked: background.addWallpaper()
+                }
+
                 GridView {
                     id: _view
 

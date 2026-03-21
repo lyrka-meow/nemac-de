@@ -13,7 +13,7 @@ class Background : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString currentBackgroundPath READ currentBackgroundPath WRITE setBackground NOTIFY backgroundChanged)
-    Q_PROPERTY(QVariantList backgrounds READ backgrounds NOTIFY stub)
+    Q_PROPERTY(QVariantList backgrounds READ backgrounds NOTIFY backgroundsListChanged)
 
     Q_PROPERTY(int backgroundType READ backgroundType WRITE setBackgroundType NOTIFY backgroundTypeChanged)
     Q_PROPERTY(QString backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
@@ -24,6 +24,7 @@ public:
     QVariantList backgrounds();
     QString currentBackgroundPath();
     Q_INVOKABLE void setBackground(QString newBackgroundPath);
+    Q_INVOKABLE void addWallpaper();
 
     int backgroundType();
     void setBackgroundType(int type);
@@ -35,11 +36,12 @@ signals:
     void backgroundChanged();
     void backgroundColorChanged();
     void backgroundTypeChanged();
-    void stub();
+    void backgroundsListChanged();
 
 private:
     QDBusInterface m_interface;
     QString m_currentPath;
+    QString customWallpaperDir() const;
 };
 
 #endif
