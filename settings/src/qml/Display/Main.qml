@@ -279,6 +279,25 @@ ItemPage {
                                 }
 
                                 Label {
+                                    text: qsTr("Primary")
+                                    visible: _screenView.count > 1
+                                }
+
+                                CheckBox {
+                                    id: primaryBox
+                                    checked: element.primary
+                                    visible: _screenView.count > 1
+                                    onClicked: {
+                                        if (checked) {
+                                            element.primary = true
+                                            screen.save()
+                                        } else {
+                                            checked = true
+                                        }
+                                    }
+                                }
+
+                                Label {
                                     text: qsTr("Enabled")
                                     visible: enabledBox.visible
                                 }
