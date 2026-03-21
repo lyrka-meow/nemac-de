@@ -80,6 +80,7 @@ install_dependencies() {
         xorg-server-devel
         syntax-highlighting5
         libxcrypt icu
+        xclip
     )
 
     if ! pacman -Qi xorg-server &>/dev/null; then

@@ -126,6 +126,28 @@ ItemPage {
                     visible: _screenView.count > 0
                 }
 
+                TabBar {
+                    id: screenTabBar
+                    Layout.fillWidth: true
+                    visible: _screenView.count > 1
+
+                    Repeater {
+                        model: screen.outputModel
+
+                        TabButton {
+                            text: model.display
+                            width: implicitWidth
+                        }
+                    }
+
+                    onCurrentIndexChanged: _screenView.currentIndex = currentIndex
+                }
+
+                Item {
+                    height: NemacUI.Units.smallSpacing / 2
+                    visible: screenTabBar.visible
+                }
+
                 ListView {
                     id: _screenView
                     Layout.fillWidth: true
@@ -133,6 +155,8 @@ ItemPage {
                     orientation: ListView.Horizontal
                     interactive: false
                     clip: true
+                    highlightMoveDuration: 200
+                    snapMode: ListView.SnapOneItem
 
                     Layout.preferredHeight: currentItem ? currentItem.layout.implicitHeight + NemacUI.Units.largeSpacing : 0
 
@@ -271,16 +295,6 @@ ItemPage {
                             }
                         }
                     }
-                }
-
-                PageIndicator {
-                    id: screenPageIndicator
-                    Layout.alignment: Qt.AlignHCenter
-                    count: _screenView.count
-                    currentIndex: _screenView.currentIndex
-                    onCurrentIndexChanged: _screenView.currentIndex = currentIndex
-                    interactive: true
-                    visible: count > 1
                 }
             }
 

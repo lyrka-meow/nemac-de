@@ -22,6 +22,7 @@
 #include <QClipboard>
 #include <QEventLoop>
 #include <QTimer>
+#include <QProcess>
 
 #include <QGuiApplication>
 #include <QQmlContext>
@@ -29,6 +30,7 @@
 #include <QPixmap>
 #include <QStandardPaths>
 #include <QDateTime>
+#include <QBuffer>
 
 #include <QDBusInterface>
 #include <QDBusPendingCall>
@@ -113,8 +115,18 @@ void ScreenshotView::copyToClipboard(QRect rect)
 
     QImage image("/tmp/nemac-screenshot.png");
     QImage cropped = image.copy(rect);
-    QClipboard *clipboard = qGuiApp->clipboard();
-    clipboard->setImage(cropped);
+
+    QByteArray pngData;
+    QBuffer buffer(&pngData);
+    buffer.open(QIODevice::WriteOnly);
+    cropped.save(&buffer, "PNG");
+    buffer.close();
+
+    QProcess xclip;
+    xclip.start("xclip", QStringList() << "-selection" << "clipboard" << "-t" << "image/png");
+    xclip.write(pngData);
+    xclip.closeWriteChannel();
+    xclip.waitForFinished(3000);
 
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
