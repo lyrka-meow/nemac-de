@@ -118,20 +118,21 @@ ItemPage {
             }
 
             RoundedItem {
-                visible: _screenView.count > 0
+                visible: screenRepeater.count > 0
 
                 Label {
                     text: qsTr("Screen")
                     color: NemacUI.Theme.disabledTextColor
-                    visible: _screenView.count > 0
                 }
 
                 TabBar {
                     id: screenTabBar
                     Layout.fillWidth: true
-                    visible: _screenView.count > 1
+                    visible: screenRepeater.count > 1
+                    currentIndex: 0
 
                     Repeater {
+                        id: screenTabRepeater
                         model: screen.outputModel
 
                         TabButton {
@@ -141,11 +142,9 @@ ItemPage {
                                     name = name.substring(0, 17) + "..."
                                 return name
                             }
-                            width: screenTabBar.width / _screenView.count
+                            width: screenTabBar.width / screenTabRepeater.count
                         }
                     }
-
-                    onCurrentIndexChanged: _screenView.currentIndex = currentIndex
                 }
 
                 Item {
@@ -153,168 +152,138 @@ ItemPage {
                     visible: screenTabBar.visible
                 }
 
-                ListView {
-                    id: _screenView
-                    Layout.fillWidth: true
+                Repeater {
+                    id: screenRepeater
                     model: screen.outputModel
-                    orientation: ListView.Horizontal
-                    interactive: false
-                    clip: true
-                    highlightMoveDuration: 200
-                    snapMode: ListView.SnapOneItem
 
-                    Layout.preferredHeight: currentItem ? currentItem.layout.implicitHeight + NemacUI.Units.largeSpacing : 0
+                    ColumnLayout {
+                        id: screenDelegate
+                        Layout.fillWidth: true
+                        visible: screenRepeater.count === 1 || index === screenTabBar.currentIndex
 
-                    Behavior on Layout.preferredHeight {
-                        NumberAnimation {
-                            duration: 300
-                            easing.type: Easing.OutSine
-                        }
-                    }
+                        property var output: model
 
-                    delegate: Item {
-                        id: screenItem
-                        height: ListView.view.height
-                        width: ListView.view.width
+                        GridLayout {
+                            columns: 2
+                            columnSpacing: NemacUI.Units.largeSpacing * 1.5
+                            rowSpacing: NemacUI.Units.largeSpacing * 1.5
+                            Layout.fillWidth: true
 
-                        property var element: model
-                        property var layout: _mainLayout
+                            Label {
+                                text: qsTr("Screen Name")
+                                visible: screenRepeater.count > 1
+                            }
 
-                        ColumnLayout {
-                            id: _mainLayout
-                            anchors.fill: parent
+                            Label {
+                                text: screenDelegate.output.display
+                                color: NemacUI.Theme.disabledTextColor
+                                visible: screenRepeater.count > 1
+                            }
 
-                            GridLayout {
-                                columns: 2
-                                columnSpacing: NemacUI.Units.largeSpacing * 1.5
-                                rowSpacing: NemacUI.Units.largeSpacing * 1.5
+                            Label {
+                                text: qsTr("Resolution")
+                            }
 
-                                Label {
-                                    text: qsTr("Screen Name")
-                                    visible: _screenView.count > 1
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: screenDelegate.output.resolutions
+                                leftPadding: NemacUI.Units.largeSpacing
+                                rightPadding: NemacUI.Units.largeSpacing
+                                topInset: 0
+                                bottomInset: 0
+                                currentIndex: screenDelegate.output.resolutionIndex !== undefined ?
+                                                  screenDelegate.output.resolutionIndex : -1
+                                onActivated: {
+                                    screenDelegate.output.resolutionIndex = currentIndex
+                                    screen.save()
                                 }
+                            }
 
-                                Label {
-                                    text: element.display
-                                    color: NemacUI.Theme.disabledTextColor
-                                    visible: _screenView.count > 1
+                            Label {
+                                text: qsTr("Refresh rate")
+                            }
+
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: screenDelegate.output.refreshRates
+                                leftPadding: NemacUI.Units.largeSpacing
+                                rightPadding: NemacUI.Units.largeSpacing
+                                topInset: 0
+                                bottomInset: 0
+                                currentIndex: screenDelegate.output.refreshRateIndex ?
+                                                  screenDelegate.output.refreshRateIndex : 0
+                                onActivated: {
+                                    screenDelegate.output.refreshRateIndex = currentIndex
+                                    screen.save()
                                 }
+                            }
 
-                                Label {
-                                    text: qsTr("Resolution")
+                            Label {
+                                text: qsTr("Rotation")
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                                height: _rotLayout.implicitHeight
+
+                                RowLayout {
+                                    id: _rotLayout
+                                    anchors.fill: parent
+                                    spacing: 0
+
+                                    RotationButton {
+                                        value: 0
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    RotationButton {
+                                        value: 90
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    RotationButton {
+                                        value: 180
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    RotationButton {
+                                        value: 270
+                                    }
                                 }
+                            }
 
-                                ComboBox {
-                                    Layout.fillWidth: true
-                                    model: element.resolutions
-                                    leftPadding: NemacUI.Units.largeSpacing
-                                    rightPadding: NemacUI.Units.largeSpacing
-                                    topInset: 0
-                                    bottomInset: 0
-                                    currentIndex: element.resolutionIndex !== undefined ?
-                                                      element.resolutionIndex : -1
-                                    onActivated: {
-                                        element.resolutionIndex = currentIndex
+                            Label {
+                                text: qsTr("Primary")
+                                visible: screenRepeater.count > 1
+                            }
+
+                            CheckBox {
+                                checked: screenDelegate.output.primary
+                                visible: screenRepeater.count > 1
+                                onClicked: {
+                                    if (checked) {
+                                        screenDelegate.output.primary = true
                                         screen.save()
+                                    } else {
+                                        checked = true
                                     }
                                 }
+                            }
 
-                                Label {
-                                    text: qsTr("Refresh rate")
-                                }
+                            Label {
+                                text: qsTr("Enabled")
+                                visible: screenRepeater.count > 1
+                            }
 
-                                ComboBox {
-                                    id: refreshRate
-                                    Layout.fillWidth: true
-                                    model: element.refreshRates
-                                    leftPadding: NemacUI.Units.largeSpacing
-                                    rightPadding: NemacUI.Units.largeSpacing
-                                    topInset: 0
-                                    bottomInset: 0
-                                    currentIndex: element.refreshRateIndex ?
-                                                      element.refreshRateIndex : 0
-                                    onActivated: {
-                                        element.refreshRateIndex = currentIndex
-                                        screen.save()
-                                    }
-                                }
-
-                                Label {
-                                    text: qsTr("Rotation")
-                                }
-
-                                Item {
-                                    id: rotationItem
-                                    Layout.fillWidth: true
-                                    height: rotationLayout.implicitHeight
-
-                                    RowLayout {
-                                        id: rotationLayout
-                                        anchors.fill: parent
-                                        spacing: 0
-
-                                        RotationButton {
-                                            value: 0
-                                        }
-
-                                        Item {
-                                            Layout.fillWidth: true
-                                        }
-
-                                        RotationButton {
-                                            value: 90
-                                        }
-
-                                        Item {
-                                            Layout.fillWidth: true
-                                        }
-
-                                        RotationButton {
-                                            value: 180
-                                        }
-
-                                        Item {
-                                            Layout.fillWidth: true
-                                        }
-
-                                        RotationButton {
-                                            value: 270
-                                        }
-                                    }
-                                }
-
-                                Label {
-                                    text: qsTr("Primary")
-                                    visible: _screenView.count > 1
-                                }
-
-                                CheckBox {
-                                    id: primaryBox
-                                    checked: element.primary
-                                    visible: _screenView.count > 1
-                                    onClicked: {
-                                        if (checked) {
-                                            element.primary = true
-                                            screen.save()
-                                        } else {
-                                            checked = true
-                                        }
-                                    }
-                                }
-
-                                Label {
-                                    text: qsTr("Enabled")
-                                    visible: enabledBox.visible
-                                }
-
-                                CheckBox {
-                                    id: enabledBox
-                                    checked: element.enabled
-                                    visible: _screenView.count > 1
-                                    onClicked: {
-                                        element.enabled = checked
-                                        screen.save()
-                                    }
+                            CheckBox {
+                                checked: screenDelegate.output.enabled
+                                visible: screenRepeater.count > 1
+                                onClicked: {
+                                    screenDelegate.output.enabled = checked
+                                    screen.save()
                                 }
                             }
                         }
