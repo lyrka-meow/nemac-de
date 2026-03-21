@@ -119,8 +119,8 @@ void ScreenshotView::copyToClipboard(QRect rect)
     QString clipFile = "/tmp/nemac-clipboard.png";
     cropped.save(clipFile, "PNG");
 
-    QProcess::startDetached("bash", QStringList() << "-c"
-        << QString("xclip -selection clipboard -t image/png < %1").arg(clipFile));
+    QProcess::startDetached("xclip", QStringList()
+        << "-selection" << "clipboard" << "-t" << "image/png" << "-i" << clipFile);
 
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
