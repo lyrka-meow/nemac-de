@@ -16,7 +16,12 @@ import Nemac.Mpris 1.0
 Item {
     id: control
 
-    implicitHeight: visible ? 300 : 0
+    clip: true
+
+    readonly property int contentMargin: Math.round(NemacUI.Units.largeSpacing * 1.25)
+
+    implicitHeight: visible ? (mainColumn.implicitHeight + 2 * contentMargin) : 0
+    height: implicitHeight
 
     property bool available: mprisManager.availableServices.length > 0
     property bool isPlaying: currentService && mprisManager.playbackStatus === Mpris.Playing
@@ -89,8 +94,12 @@ Item {
     }
 
     ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: NemacUI.Units.largeSpacing * 1.25
+        id: mainColumn
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: contentMargin
+        width: parent.width
         spacing: NemacUI.Units.largeSpacing
 
         ColumnLayout {
@@ -98,99 +107,87 @@ Item {
             Layout.fillWidth: true
             spacing: NemacUI.Units.largeSpacing
 
-                Item {
-                    Layout.alignment: Qt.AlignHCenter
-                    width: 148
-                    height: 148
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                width: 148
+                height: 148
 
-                    DropShadow {
-                        anchors.centerIn: artCircle
-                        width: artCircle.width + 24
-                        height: artCircle.height + 24
-                        horizontalOffset: 0
-                        verticalOffset: 8
-                        radius: 28
-                        samples: 17
-                        color: Qt.rgba(NemacUI.Theme.highlightColor.r,
-                                       NemacUI.Theme.highlightColor.g,
-                                       NemacUI.Theme.highlightColor.b, 0.45)
-                        source: artCircle
+                Rectangle {
+                    id: artCircle
+                    anchors.centerIn: parent
+                    width: 140
+                    height: 140
+                    radius: width / 2
+                    color: NemacUI.Theme.darkMode ? "#2a2a2e" : "#e8e8ec"
+                    border.width: 2
+                    border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
+                                          NemacUI.Theme.highlightColor.g,
+                                          NemacUI.Theme.highlightColor.b, 0.55)
+
+                    Image {
+                        id: defaultImage
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        source: "qrc:/images/media-cover.svg"
+                        sourceSize: Qt.size(width, height)
+                        visible: !artImage.visible
+                        fillMode: Image.Pad
                     }
 
-                    Rectangle {
-                        id: artCircle
-                        anchors.centerIn: parent
-                        width: 140
-                        height: 140
-                        radius: width / 2
-                        color: NemacUI.Theme.darkMode ? "#2a2a2e" : "#e8e8ec"
-                        border.width: 3
-                        border.color: NemacUI.Theme.highlightColor
-
-                        Image {
-                            id: defaultImage
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            source: "qrc:/images/media-cover.svg"
-                            sourceSize: Qt.size(width, height)
-                            visible: !artImage.visible
-                            fillMode: Image.Pad
-                        }
-
-                        Image {
-                            id: artImage
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            visible: status === Image.Ready
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            layer.enabled: true
-                            layer.effect: OpacityMask {
-                                maskSource: Rectangle {
-                                    width: artImage.width
-                                    height: artImage.height
-                                    radius: width / 2
-                                }
+                    Image {
+                        id: artImage
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        visible: status === Image.Ready
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: artImage.width
+                                height: artImage.height
+                                radius: width / 2
                             }
                         }
                     }
                 }
-
-                Label {
-                    id: _songLabel
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    font.pointSize: 13
-                    font.bold: true
-                    font.capitalization: Font.AllUppercase
-                    elide: Text.ElideMiddle
-                    wrapMode: Text.WordWrap
-                    maximumLineCount: 2
-                    color: NemacUI.Theme.textColor
-                }
-
-                Label {
-                    id: _artistLabel
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    font.pointSize: 11
-                    elide: Text.ElideMiddle
-                    color: NemacUI.Theme.disabledTextColor
-                }
-
-                Label {
-                    id: _albumLabel
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    font.pointSize: 9
-                    font.capitalization: Font.AllUppercase
-                    elide: Text.ElideMiddle
-                    visible: text.length > 0
-                    color: Qt.rgba(NemacUI.Theme.disabledTextColor.r,
-                                   NemacUI.Theme.disabledTextColor.g,
-                                   NemacUI.Theme.disabledTextColor.b, 0.85)
-                }
             }
+
+            Label {
+                id: _songLabel
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                font.pointSize: 13
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                elide: Text.ElideMiddle
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                color: NemacUI.Theme.textColor
+            }
+
+            Label {
+                id: _artistLabel
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                font.pointSize: 11
+                elide: Text.ElideMiddle
+                color: NemacUI.Theme.disabledTextColor
+            }
+
+            Label {
+                id: _albumLabel
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                font.pointSize: 9
+                font.capitalization: Font.AllUppercase
+                elide: Text.ElideMiddle
+                visible: text.length > 0
+                color: Qt.rgba(NemacUI.Theme.disabledTextColor.r,
+                               NemacUI.Theme.disabledTextColor.g,
+                               NemacUI.Theme.disabledTextColor.b, 0.85)
+            }
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -230,6 +227,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 64
             Layout.alignment: Qt.AlignHCenter
             spacing: NemacUI.Units.largeSpacing * 1.5
 

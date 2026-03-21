@@ -54,7 +54,7 @@ ControlCenterDialog {
             return "audio-volume-high-symbolic"
     }
 
-    onWidthChanged: adjustCorrectLocation()
+su    onWidthChanged: adjustCorrectLocation()
     onHeightChanged: adjustCorrectLocation()
     onPositionChanged: adjustCorrectLocation()
 
@@ -175,7 +175,6 @@ ControlCenterDialog {
 
         MprisItem {
             Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
         }
 
         Item {
