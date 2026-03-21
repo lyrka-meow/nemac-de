@@ -116,17 +116,11 @@ void ScreenshotView::copyToClipboard(QRect rect)
     QImage image("/tmp/nemac-screenshot.png");
     QImage cropped = image.copy(rect);
 
-    QByteArray pngData;
-    QBuffer buffer(&pngData);
-    buffer.open(QIODevice::WriteOnly);
-    cropped.save(&buffer, "PNG");
-    buffer.close();
+    QString clipFile = "/tmp/nemac-clipboard.png";
+    cropped.save(clipFile, "PNG");
 
-    QProcess xclip;
-    xclip.start("xclip", QStringList() << "-selection" << "clipboard" << "-t" << "image/png");
-    xclip.write(pngData);
-    xclip.closeWriteChannel();
-    xclip.waitForFinished(3000);
+    QProcess::startDetached("bash", QStringList() << "-c"
+        << QString("xclip -selection clipboard -t image/png < %1").arg(clipFile));
 
     QDBusInterface iface("org.freedesktop.Notifications",
                          "/org/freedesktop/Notifications",
@@ -147,7 +141,7 @@ void ScreenshotView::copyToClipboard(QRect rect)
 
     removeTmpFile();
 
-    QTimer::singleShot(100, qGuiApp, &QGuiApplication::quit);
+    QTimer::singleShot(500, qGuiApp, &QGuiApplication::quit);
 }
 
 void ScreenshotView::removeTmpFile()
