@@ -86,13 +86,21 @@ nemac-de/
 
 ## Если сборка падает на CMake (KF5)
 
-Сообщения вида `Could not find KF5WindowSystem`, `target KF5::WindowSystem was not found`, `KF5::IdleTime`, `KF5::CoreAddons` значат, что **не установлены библиотеки KDE Frameworks 5**, которые тянет компонент `core`.
+Сообщения вида `Could not find KF5WindowSystem`, `KF5::WindowSystem was not found` значат, что **не найдены CMake-конфиги KDE Frameworks 5**.
 
-Установи вручную и перезапусти установщик:
+На **Arch / CachyOS** пакет `kwindowsystem` (без суффикса) — это **KF6**, он ставит только `KF6WindowSystem`. Nemac собирается на **Qt5 + KF5**, нужны пакеты с суффиксом **`5`**:
 
 ```bash
-sudo pacman -S --needed kwindowsystem kidletime kcoreaddons extra-cmake-modules qt5-base
+sudo pacman -S --needed \
+  kwindowsystem5 kidletime5 kcoreaddons5 \
+  libkscreen5 kio5 solid5 \
+  networkmanager-qt5 bluez-qt5 \
+  extra-cmake-modules qt5-base
 ```
+
+Установщик `installer.sh` подтягивает эти имена автоматически.
+
+Предупреждение **XCB_XCB / FindXCB** от `cmake -Wno-dev` можно игнорировать; на сборку оно не влияет.
 
 Логи: `/tmp/nemac-cmake-*.log` и `/tmp/nemac-make-*.log`.
 
