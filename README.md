@@ -100,7 +100,9 @@ sudo pacman -S --needed \
 
 Установщик `installer.sh` подтягивает эти имена автоматически.
 
-Предупреждение **XCB_XCB / FindXCB** от `cmake -Wno-dev` можно игнорировать; на сборку оно не влияет.
+Установщик вызывает CMake с **`-Wno-dev`**, чтобы не засорять лог предупреждениями ECM про **FindXCB** (имена `XCB_XCB`, `XCB_IMAGE` и т.д.) — это известная особенность модулей KDE, на результат сборки не влияет.
+
+Строка **`Could NOT find AppMenuGtkModule`** для `gmenuproxy` обычно **нормальна**: глобальное меню для GTK ставится опционально (`appmenu-gtk-module` в репозиториях); без неё Nemac всё равно собирается.
 
 Логи: `/tmp/nemac-cmake-*.log` и `/tmp/nemac-make-*.log`.
 

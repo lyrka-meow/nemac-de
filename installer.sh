@@ -139,7 +139,7 @@ build_sources() {
         mkdir -p "$src_dir/build"
         cd "$src_dir/build"
 
-        if cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
+        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
             if make -j"$(nproc)" > /tmp/nemac-make-$component.log 2>&1; then
                 make install > /dev/null 2>&1
             else
