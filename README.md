@@ -21,11 +21,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de
 nemac
 ```
 
-Через неё можно:
-- Переустановить / обновить DE
-- Настроить `~/.xinitrc`
-- Обновить исходники
-- Удалить Nemac DE
+Через неё: обновить DE, удалить Nemac DE и т.д.
 
 ## Запуск
 
@@ -87,6 +83,18 @@ nemac-de/
 | **wallpapers** | Системные обои |
 | **cursor-themes** | Темы курсора (светлая/тёмная) |
 | **gtk-themes** | GTK-темы (светлая/тёмная) |
+
+## Если сборка падает на CMake (KF5)
+
+Сообщения вида `Could not find KF5WindowSystem`, `target KF5::WindowSystem was not found`, `KF5::IdleTime`, `KF5::CoreAddons` значат, что **не установлены библиотеки KDE Frameworks 5**, которые тянет компонент `core`.
+
+Установи вручную и перезапусти установщик:
+
+```bash
+sudo pacman -S --needed kwindowsystem kidletime kcoreaddons extra-cmake-modules qt5-base
+```
+
+Логи: `/tmp/nemac-cmake-*.log` и `/tmp/nemac-make-*.log`.
 
 ## Лицензия
 
