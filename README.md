@@ -108,6 +108,10 @@ sudo pacman -S --needed \
 
 Логи: `/tmp/nemac-cmake-*.log` и `/tmp/nemac-make-*.log`.
 
+### Вход через LightDM / SDDM / GDM
+
+После установки в списке сессий появляется **Nemac** (файл `/usr/share/xsessions/nemac.desktop`, запуск `nemac-session`). Сам через **`startx`** можно по-прежнему: для этого настроен `~/.xinitrc`.
+
 ## Лицензия
 
 GPL-3.0 — см. [LICENSE](LICENSE).

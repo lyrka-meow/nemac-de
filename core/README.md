@@ -42,6 +42,8 @@ make
 sudo make install
 ```
 
+This installs `nemac-session` and registers an X11 session: `/usr/share/xsessions/nemac.desktop` (visible in LightDM, SDDM, GDM, etc.).
+
 ## License
 
 This project has been licensed by GPLv3.

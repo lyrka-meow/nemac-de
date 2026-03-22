@@ -240,6 +240,7 @@ uninstall_nemac() {
     rm -rf /usr/share/backgrounds/nemacde
     rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
     rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
+    rm -f /usr/share/xsessions/nemac.desktop
 
     local real_user="${SUDO_USER:-$USER}"
     local real_home
