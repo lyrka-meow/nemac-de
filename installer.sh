@@ -73,6 +73,8 @@ install_dependencies() {
         libkscreen5 kio5 solid5
         polkit polkit-qt5
         networkmanager-qt5
+        libqt5xdg libdbusmenu-qt5
+        libcanberra qt5-sensors
         libxcb xcb-util xcb-util-wm xcb-util-keysyms
         libpulse
         bluez bluez-qt5
