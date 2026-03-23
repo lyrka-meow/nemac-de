@@ -62,7 +62,7 @@ EXTERNAL_BINS=(
     "dbus-update-activation-environment:DBus обновление окружения:sudo pacman -S dbus"
     "xrdb:X resources (настройки DPI/курсора):sudo pacman -S xorg-xrdb"
     "xdg-user-dirs-update:XDG каталоги:sudo pacman -S xdg-user-dirs"
-    "polkit-kde-authentication-agent-1:Polkit агент (запрос пароля для sudo-операций):"
+    "nemac-polkit-agent:Polkit агент Nemac (запрос пароля для sudo-операций):"
 )
 EXT_MISSING=()
 for entry in "${EXTERNAL_BINS[@]}"; do
