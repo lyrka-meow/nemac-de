@@ -98,17 +98,16 @@ cmd_build() {
         fi
 
         echo -ne "  [$current/$total] $component...\r"
-        rm -rf "$src_dir/build"
-        mkdir -p "$src_dir/build"
-        cd "$src_dir/build"
+        local build_dir="$src_dir/build"
+        rm -rf "$build_dir"
 
-        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
-            if make -j"$(nproc)" > "$LOG_DIR/nemac-make-$component.log" 2>&1; then
-                sudo make install > /dev/null 2>&1
+        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr -S "$src_dir" -B "$build_dir" > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
+            if cmake --build "$build_dir" --parallel "$(nproc)" > "$LOG_DIR/nemac-build-$component.log" 2>&1; then
+                sudo cmake --install "$build_dir" --prefix /usr > /dev/null 2>&1
                 echo -e "  ${GREEN}✓${NC} [$current/$total] $component"
             else
                 failed+=("$component")
-                echo -e "  ${RED}✗${NC} [$current/$total] $component (make failed)"
+                echo -e "  ${RED}✗${NC} [$current/$total] $component (cmake --build failed)"
             fi
         else
             failed+=("$component")
@@ -119,7 +118,7 @@ cmd_build() {
     echo ""
     if [ ${#failed[@]} -gt 0 ]; then
         echo -e "${RED}  Ошибки: ${failed[*]}${NC}"
-        echo -e "  ${YELLOW}Логи: $LOG_DIR/nemac-cmake-*.log, nemac-make-*.log${NC}"
+        echo -e "  ${YELLOW}Логи: $LOG_DIR/nemac-cmake-*.log, nemac-build-*.log${NC}"
     else
         echo -e "${GREEN}  Все компоненты собраны и установлены.${NC}"
     fi
@@ -154,30 +153,25 @@ cmd_package() {
 
         local build_dir="$src_dir/build"
 
-        if [ ! -d "$build_dir" ]; then
-            echo -e "  ${YELLOW}!${NC} $component — не собран, собираю..."
-            mkdir -p "$build_dir"
-            cd "$build_dir"
-            if ! cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
+        if [ ! -f "$build_dir/CMakeCache.txt" ]; then
+            echo -e "  ${YELLOW}!${NC} $component — нет build, конфигурирую..."
+            if ! cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr -S "$src_dir" -B "$build_dir" > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
                 failed+=("$component")
                 echo -e "  ${RED}✗${NC} $component (cmake failed)"
                 continue
             fi
-            if ! make -j"$(nproc)" > "$LOG_DIR/nemac-make-$component.log" 2>&1; then
-                failed+=("$component")
-                echo -e "  ${RED}✗${NC} $component (make failed)"
-                continue
-            fi
         fi
 
-        cd "$build_dir" || {
+        if ! cmake --build "$build_dir" --parallel "$(nproc)" > "$LOG_DIR/nemac-build-$component.log" 2>&1; then
             failed+=("$component")
-            echo -e "  ${RED}✗${NC} $component (нет каталога build)"
+            echo -e "  ${RED}✗${NC} $component (cmake --build failed)"
+            echo -e "       ${YELLOW}лог: $LOG_DIR/nemac-build-$component.log${NC}"
             continue
-        }
-        if ! make DESTDIR="$STAGING_DIR" install > "$LOG_DIR/nemac-destdir-install-$component.log" 2>&1; then
+        fi
+
+        if ! env DESTDIR="$STAGING_DIR" cmake --install "$build_dir" --prefix /usr > "$LOG_DIR/nemac-destdir-install-$component.log" 2>&1; then
             failed+=("$component")
-            echo -e "  ${RED}✗${NC} $component (make DESTDIR=... install failed)"
+            echo -e "  ${RED}✗${NC} $component (cmake --install DESTDIR=... failed)"
             echo -e "       ${YELLOW}лог: $LOG_DIR/nemac-destdir-install-$component.log${NC}"
             continue
         fi
