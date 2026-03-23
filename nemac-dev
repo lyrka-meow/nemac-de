@@ -170,8 +170,17 @@ cmd_package() {
             fi
         fi
 
-        cd "$build_dir"
-        make DESTDIR="$STAGING_DIR" install > /dev/null 2>&1
+        cd "$build_dir" || {
+            failed+=("$component")
+            echo -e "  ${RED}✗${NC} $component (нет каталога build)"
+            continue
+        }
+        if ! make DESTDIR="$STAGING_DIR" install > "$LOG_DIR/nemac-destdir-install-$component.log" 2>&1; then
+            failed+=("$component")
+            echo -e "  ${RED}✗${NC} $component (make DESTDIR=... install failed)"
+            echo -e "       ${YELLOW}лог: $LOG_DIR/nemac-destdir-install-$component.log${NC}"
+            continue
+        fi
         echo -e "  ${GREEN}✓${NC} [$current/$total] $component"
     done
 
