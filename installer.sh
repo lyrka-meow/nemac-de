@@ -67,7 +67,7 @@ install_dependencies() {
     local deps=(
         git cmake make gcc
         qt5-tools extra-cmake-modules
-        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg
+        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg qt5-graphicaleffects
         kwin kdecoration
         kwindowsystem5 kidletime5 kcoreaddons5
         libkscreen5 kio5 solid5
