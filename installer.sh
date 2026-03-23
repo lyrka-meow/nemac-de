@@ -68,7 +68,7 @@ install_dependencies() {
         git cmake make gcc
         qt5-tools extra-cmake-modules
         qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg qt5-graphicaleffects
-        kwin kdecoration
+        kwin kwin-x11 kdecoration
         kwindowsystem5 kidletime5 kcoreaddons5
         libkscreen5 kio5 solid5
         polkit polkit-qt5
