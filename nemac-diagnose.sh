@@ -154,7 +154,7 @@ SYS_QML_MODULES=(
     "QtGraphicalEffects"
     "Qt/labs/platform"
     "Qt/labs/settings"
-    "org/kde/kwindowsystem"
+    "NemacUI"
 )
 SYS_QML_MISSING=0
 for mod in "${SYS_QML_MODULES[@]}"; do
