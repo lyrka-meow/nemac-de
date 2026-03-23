@@ -33,3 +33,4 @@ target_link_libraries(${TARGET}
 
 install(TARGETS ${TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES nemac.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/xsessions)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/../nemac-updator DESTINATION ${CMAKE_INSTALL_BINDIR})

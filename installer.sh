@@ -9,28 +9,31 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-NEMAC_DIR="/opt/nemac-de"
-NEMAC_BIN="/usr/local/bin/nemac"
-NEMAC_REPO="https://github.com/lyrka-meow/nemac-de.git"
+NEMAC_REPO="lyrka-meow/nemac-de"
 NEMAC_VERSION="0.8"
+GITHUB_API="https://api.github.com/repos/$NEMAC_REPO/releases/latest"
+NEMAC_BIN="/usr/local/bin/nemac"
+NEMAC_DEV_BIN="/usr/local/bin/nemac-dev"
 START_CMD="exec nemac-session"
 
-BUILD_ORDER=(
-    "libnemac"
-    "nemacui"
-    "core"
-    "kwin-plugins"
-    "qt-plugins"
-    "dock"
-    "statusbar"
-    "launcher"
-    "settings"
-    "filemanager"
-    "screenlocker"
-    "screenshot"
-    "terminal"
-    "texteditor"
-    "calculator"
+RUNTIME_DEPS=(
+    qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg qt5-graphicaleffects
+    qt5-sensors
+    kwin kwin-x11 kdecoration
+    kwindowsystem5 kidletime5 kcoreaddons5
+    libkscreen5 kio5 solid5
+    polkit polkit-qt5
+    networkmanager-qt5
+    libqt5xdg libdbusmenu-qt5
+    libcanberra
+    libxcb xcb-util xcb-util-wm xcb-util-keysyms
+    libpulse
+    bluez bluez-qt5
+    xdg-utils
+    freetype2 fontconfig
+    syntax-highlighting5
+    libxcrypt icu
+    xclip
 )
 
 print_header() {
@@ -62,29 +65,9 @@ check_arch() {
 
 install_dependencies() {
     echo ""
-    echo -e "  ${BLUE}[1/6]${NC} Устанавливаю зависимости..."
+    echo -e "  ${BLUE}[1/4]${NC} Устанавливаю зависимости..."
 
-    local deps=(
-        git cmake make gcc
-        qt5-tools extra-cmake-modules
-        qt5-base qt5-declarative qt5-quickcontrols2 qt5-x11extras qt5-svg qt5-graphicaleffects
-        kwin kwin-x11 kdecoration
-        kwindowsystem5 kidletime5 kcoreaddons5
-        libkscreen5 kio5 solid5
-        polkit polkit-qt5
-        networkmanager-qt5
-        libqt5xdg libdbusmenu-qt5
-        libcanberra qt5-sensors
-        libxcb xcb-util xcb-util-wm xcb-util-keysyms
-        libpulse
-        bluez bluez-qt5
-        xdg-utils
-        freetype2 fontconfig
-        xorg-server-devel
-        syntax-highlighting5
-        libxcrypt icu
-        xclip
-    )
+    local deps=("${RUNTIME_DEPS[@]}")
 
     if ! pacman -Qi xorg-server &>/dev/null; then
         deps+=(xorg-server)
@@ -95,108 +78,65 @@ install_dependencies() {
     if ! pacman -Qi xorg-xrdb &>/dev/null; then
         deps+=(xorg-xrdb)
     fi
-
     if ! pacman -Qi pipewire-pulse &>/dev/null && ! pacman -Qi pulseaudio &>/dev/null; then
         deps+=(pipewire-pulse)
     fi
 
-    if ! pacman -Qi libcanberra &>/dev/null; then
-        deps+=(libcanberra)
-    fi
-
     pacman -S --needed --noconfirm "${deps[@]}" > /tmp/nemac-deps.log 2>&1
-    echo -e "  ${GREEN}[1/6]${NC} Зависимости установлены  ${GREEN}✓${NC}"
+    echo -e "  ${GREEN}[1/4]${NC} Зависимости установлены  ${GREEN}✓${NC}"
 }
 
-download_sources() {
-    echo -e "  ${BLUE}[2/6]${NC} Скачиваю исходники..."
+download_and_install() {
+    echo -e "  ${BLUE}[2/4]${NC} Скачиваю Nemac DE..."
 
-    if [ -d "$NEMAC_DIR/.git" ]; then
-        cd "$NEMAC_DIR" && git pull --quiet 2>/dev/null || true
-    else
-        rm -rf "$NEMAC_DIR"
-        git clone --quiet "$NEMAC_REPO" "$NEMAC_DIR"
+    local release_info download_url remote_tag
+
+    release_info=$(curl -fsSL "$GITHUB_API" 2>/dev/null) || true
+
+    if [ -z "$release_info" ]; then
+        echo -e "  ${RED}[2/4]${NC} Не удалось получить информацию о релизе  ${RED}✗${NC}"
+        echo -e "         ${YELLOW}Проверьте интернет или установите из исходников: nemac-dev build${NC}"
+        exit 1
     fi
 
-    echo -e "  ${GREEN}[2/6]${NC} Исходники скачаны  ${GREEN}✓${NC}"
-}
+    remote_tag=$(echo "$release_info" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+    download_url=$(echo "$release_info" | grep '"browser_download_url"' | grep '\.tar\.gz"' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
 
-build_sources() {
-    echo -e "  ${BLUE}[3/6]${NC} Собираю компоненты (это может занять несколько минут)..."
-
-    local total=${#BUILD_ORDER[@]}
-    local current=0
-    local failed=()
-
-    for component in "${BUILD_ORDER[@]}"; do
-        current=$((current + 1))
-        local src_dir="$NEMAC_DIR/$component"
-
-        if [ ! -d "$src_dir" ]; then
-            continue
-        fi
-
-        echo -ne "         Собираю [$current/$total] $component...\r"
-        rm -rf "$src_dir/build"
-        mkdir -p "$src_dir/build"
-        cd "$src_dir/build"
-
-        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
-            if make -j"$(nproc)" > /tmp/nemac-make-$component.log 2>&1; then
-                make install > /dev/null 2>&1
-            else
-                failed+=("$component")
-            fi
-        else
-            failed+=("$component")
-        fi
-    done
-
-    if [ ${#failed[@]} -gt 0 ]; then
-        echo -e "  ${YELLOW}[3/6]${NC} Собрано (ошибки: ${failed[*]})  ${YELLOW}!${NC}"
-        echo -e "         ${YELLOW}Логи ошибок: /tmp/nemac-*.log${NC}"
-    else
-        echo -e "  ${GREEN}[3/6]${NC} Все компоненты собраны  ${GREEN}✓${NC}"
-    fi
-}
-
-install_assets() {
-    echo -e "  ${BLUE}[4/6]${NC} Устанавливаю обои, иконки, темы..."
-
-    if [ -d "$NEMAC_DIR/wallpapers/sources" ]; then
-        mkdir -p /usr/share/backgrounds/nemacde
-        cp -f "$NEMAC_DIR/wallpapers/sources"/*.jpg /usr/share/backgrounds/nemacde/ 2>/dev/null || true
+    if [ -z "$download_url" ]; then
+        echo -e "  ${RED}[2/4]${NC} Бинарный пакет не найден в релизе $remote_tag  ${RED}✗${NC}"
+        echo -e "         ${YELLOW}Разработчик ещё не опубликовал бинарники.${NC}"
+        echo -e "         ${YELLOW}Установите из исходников: nemac-dev build${NC}"
+        exit 1
     fi
 
-    if [ -d "$NEMAC_DIR/icons/Crule" ]; then
-        cp -rf "$NEMAC_DIR/icons/Crule" /usr/share/icons/
-        cp -rf "$NEMAC_DIR/icons/Crule-dark" /usr/share/icons/ 2>/dev/null || true
-        gtk-update-icon-cache /usr/share/icons/Crule 2>/dev/null || true
+    echo -ne "         Скачиваю $remote_tag...\r"
+    local tmpfile="/tmp/nemac-install-${remote_tag}.tar.gz"
+
+    if ! curl -fSL "$download_url" -o "$tmpfile" 2>/dev/null; then
+        echo -e "  ${RED}[2/4]${NC} Ошибка скачивания  ${RED}✗${NC}"
+        exit 1
     fi
 
-    if [ -d "$NEMAC_DIR/cursor-themes/nemac-light" ]; then
-        cp -rf "$NEMAC_DIR/cursor-themes/nemac-light" /usr/share/icons/
-        cp -rf "$NEMAC_DIR/cursor-themes/nemac-dark" /usr/share/icons/ 2>/dev/null || true
-    fi
+    echo -ne "         Устанавливаю...\r"
+    tar xzf "$tmpfile" -C /
+    rm -f "$tmpfile"
 
-    if [ -d "$NEMAC_DIR/gtk-themes/Nemac" ]; then
-        mkdir -p /usr/share/themes
-        cp -rf "$NEMAC_DIR/gtk-themes/Nemac" /usr/share/themes/
-        cp -rf "$NEMAC_DIR/gtk-themes/Nemac-light" /usr/share/themes/ 2>/dev/null || true
-        cp -rf "$NEMAC_DIR/gtk-themes/Nemac-dark" /usr/share/themes/ 2>/dev/null || true
-    fi
-
-    echo -e "  ${GREEN}[4/6]${NC} Ресурсы установлены  ${GREEN}✓${NC}"
+    echo -e "  ${GREEN}[2/4]${NC} Nemac DE $remote_tag установлен  ${GREEN}✓${NC}"
 }
 
 install_config() {
-    echo -e "  ${BLUE}[5/6]${NC} Настраиваю систему..."
+    echo -e "  ${BLUE}[3/4]${NC} Настраиваю систему..."
 
     rm -f /usr/share/applications/cutefish-*.desktop 2>/dev/null
 
-    cp "$NEMAC_DIR/nemac" "$NEMAC_BIN"
-    chmod +x "$NEMAC_BIN"
+    # Ensure management scripts from repo are available
+    local repo_dir="/opt/nemac-de"
+    if [ -d "$repo_dir" ]; then
+        [ -f "$repo_dir/nemac" ] && cp "$repo_dir/nemac" "$NEMAC_BIN" && chmod +x "$NEMAC_BIN"
+        [ -f "$repo_dir/nemac-dev" ] && cp "$repo_dir/nemac-dev" "$NEMAC_DEV_BIN" && chmod +x "$NEMAC_DEV_BIN"
+    fi
 
+    # Config might already be in tarball, but ensure it's correct
     cat > /etc/nemac << CONF
 [General]
 Version=$NEMAC_VERSION
@@ -207,11 +147,11 @@ CONF
 NemacDE=true
 CONF
 
-    echo -e "  ${GREEN}[5/6]${NC} Конфигурация готова  ${GREEN}✓${NC}"
+    echo -e "  ${GREEN}[3/4]${NC} Конфигурация готова  ${GREEN}✓${NC}"
 }
 
 setup_xinitrc() {
-    echo -e "  ${BLUE}[6/6]${NC} Настраиваю автозапуск..."
+    echo -e "  ${BLUE}[4/4]${NC} Настраиваю автозапуск..."
 
     local real_user="${SUDO_USER:-$USER}"
     local real_home
@@ -228,7 +168,7 @@ setup_xinitrc() {
         fi
     fi
 
-    echo -e "  ${GREEN}[6/6]${NC} Файл ~/.xinitrc настроен  ${GREEN}✓${NC}"
+    echo -e "  ${GREEN}[4/4]${NC} Файл ~/.xinitrc настроен  ${GREEN}✓${NC}"
 }
 
 uninstall_nemac() {
@@ -236,14 +176,54 @@ uninstall_nemac() {
     echo -e "  ${RED}Удаление Nemac DE...${NC}"
     echo ""
 
-    rm -rf "$NEMAC_DIR"
-    rm -f "$NEMAC_BIN"
+    # Binaries
+    local bins=(
+        nemac-session nemac-settings-daemon nemac-statusbar nemac-dock
+        nemac-launcher nemac-filemanager nemac-notificationd nemac-powerman
+        nemac-clipboard nemac-xembedsniproxy nemac-gmenuproxy chotkeys
+        cupdatecursor nemac-screenshot nemac-terminal nemac-settings
+        nemac-screenlocker nemac-shutdown nemac-screen-brightness
+        nemac-cpufreq nemac-polkit-agent nemac-texteditor nemac-calculator
+        ccheckpass nemac-updator
+    )
+    for bin in "${bins[@]}"; do
+        rm -f "/usr/bin/$bin" 2>/dev/null
+    done
+
+    rm -f "$NEMAC_BIN" "$NEMAC_DEV_BIN"
     rm -f /etc/nemac /etc/nemacde
     rm -rf /usr/share/backgrounds/nemacde
     rm -rf /usr/share/icons/nemac-light /usr/share/icons/nemac-dark
+    rm -rf /usr/share/icons/Crule /usr/share/icons/Crule-dark
     rm -rf /usr/share/themes/Nemac /usr/share/themes/Nemac-light /usr/share/themes/Nemac-dark
     rm -f /usr/share/xsessions/nemac.desktop
+    rm -f /usr/share/applications/nemac-*.desktop
+    rm -rf /usr/share/nemac-*
+    rm -rf /usr/share/kwin/scripts/nemaclauncher
+    rm -rf /usr/share/kwin/effects/nemac_*
+    rm -rf /usr/share/kwin/tabbox/nemac_*
+    rm -f /etc/xdg/autostart/nemac-polkit-agent.desktop
+    rm -f /usr/lib/systemd/user/nemac-gmenuproxy.service
+    rm -f /etc/nemac-dock-list.conf
+    rm -rf /opt/nemac-de
 
+    # QML plugins
+    local qml_dir
+    qml_dir=$(qmake -query QT_INSTALL_QML 2>/dev/null || echo "/usr/lib/qt/qml")
+    rm -rf "$qml_dir/Nemac" "$qml_dir/NemacUI"
+    rm -rf "$qml_dir/QtQuick/Controls.2/fish-style"
+
+    # Qt plugins
+    local qt_plugins
+    qt_plugins=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/qt/plugins")
+    rm -f "$qt_plugins/styles/libnemacstyle.so"
+    rm -f "$qt_plugins/platformthemes/libnemacplatformtheme.so"
+    rm -f "$qt_plugins/kwin/effects/plugins/libroundedwindow.so"
+    rm -f "$qt_plugins/org.kde.kdecoration2/libnemacdecoration.so"
+
+    rm -rf /usr/lib/cmake/NemacUI
+
+    # xinitrc
     local real_user="${SUDO_USER:-$USER}"
     local real_home
     real_home=$(eval echo "~$real_user")
@@ -267,9 +247,7 @@ do_install() {
     echo -e "  ${CYAN}—————————————————————————————————${NC}"
 
     install_dependencies
-    download_sources
-    build_sources
-    install_assets
+    download_and_install
     install_config
     setup_xinitrc
 
@@ -285,7 +263,6 @@ do_install() {
     echo ""
 }
 
-# Если передан аргумент --uninstall — удаляем
 if [ "$1" = "--uninstall" ]; then
     check_root
     uninstall_nemac

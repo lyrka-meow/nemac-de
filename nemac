@@ -8,7 +8,8 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-NEMAC_DIR="/opt/nemac-de"
+NEMAC_REPO="lyrka-meow/nemac-de"
+GITHUB_API="https://api.github.com/repos/$NEMAC_REPO/releases/latest"
 
 print_header() {
     clear
@@ -36,38 +37,91 @@ show_status() {
     echo ""
 }
 
+do_update() {
+    echo ""
+    echo -e "  ${BLUE}Проверяю обновления...${NC}"
+
+    local current_ver="0"
+    if [ -f "/etc/nemac" ]; then
+        current_ver=$(grep "Version" /etc/nemac 2>/dev/null | cut -d= -f2 | tr -d ' ')
+    fi
+
+    local release_info
+    release_info=$(curl -fsSL "$GITHUB_API" 2>/dev/null) || true
+
+    if [ -z "$release_info" ]; then
+        echo -e "  ${RED}Не удалось проверить обновления.${NC}"
+        echo -e "  ${YELLOW}Проверьте подключение к интернету.${NC}"
+        return
+    fi
+
+    local remote_tag remote_ver download_url
+    remote_tag=$(echo "$release_info" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+    remote_ver="${remote_tag#v}"
+
+    if [ -z "$remote_ver" ]; then
+        echo -e "  ${YELLOW}Релизы не найдены. Разработчик ещё не опубликовал бинарники.${NC}"
+        return
+    fi
+
+    if [ "$current_ver" = "$remote_ver" ]; then
+        echo -e "  ${GREEN}У вас последняя версия (v$current_ver). Обновление не требуется.${NC}"
+        return
+    fi
+
+    echo -e "  Установлена: ${YELLOW}v$current_ver${NC}"
+    echo -e "  Доступна:    ${GREEN}v$remote_ver${NC}"
+    echo ""
+    read -rp "  Обновить? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        return
+    fi
+
+    download_url=$(echo "$release_info" | grep '"browser_download_url"' | grep '\.tar\.gz"' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
+
+    if [ -z "$download_url" ]; then
+        echo -e "  ${RED}Бинарный пакет не найден в релизе.${NC}"
+        return
+    fi
+
+    echo -ne "  Скачиваю...\r"
+    local tmpfile="/tmp/nemac-update-${remote_ver}.tar.gz"
+
+    if ! curl -fSL "$download_url" -o "$tmpfile" 2>/dev/null; then
+        echo -e "  ${RED}Ошибка скачивания.${NC}"
+        return
+    fi
+
+    echo -ne "  Устанавливаю...\r"
+    sudo tar xzf "$tmpfile" -C /
+    rm -f "$tmpfile"
+
+    echo -e "  ${GREEN}Обновлено до v$remote_ver!${NC}"
+    echo -e "  ${YELLOW}Перезайдите в сессию, чтобы изменения вступили в силу.${NC}"
+}
+
 show_menu() {
     while true; do
         print_header
         show_status
 
-        echo -e "  ${GREEN}1${NC})  Обновить"
-        echo -e "  ${CYAN}2${NC})  Диагностика"
-        echo -e "  ${RED}3${NC})  Удалить Nemac DE"
+        echo -e "  ${GREEN}1${NC})  Обновить DE"
+        echo -e "  ${RED}2${NC})  Удалить Nemac DE"
         echo -e "  ${RED}0${NC})  Выход"
         echo ""
         read -rp "  > " choice
 
         case $choice in
             1)
-                echo ""
-                echo -e "  ${YELLOW}Скачиваю обновления и пересобираю...${NC}"
-                curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh -o /tmp/nemac-installer.sh
-                sudo bash /tmp/nemac-installer.sh
-                rm -f /tmp/nemac-installer.sh
+                do_update
                 echo ""
                 read -rp "  Нажмите Enter..."
                 ;;
             2)
-                bash "$NEMAC_DIR/nemac-diagnose.sh"
-                echo ""
-                read -rp "  Нажмите Enter..."
-                ;;
-            3)
                 echo ""
                 read -rp "  Удалить Nemac DE? (y/N): " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    curl -fsSL https://raw.githubusercontent.com/lyrka-meow/nemac-de/main/installer.sh -o /tmp/nemac-installer.sh
+                    curl -fsSL "https://raw.githubusercontent.com/$NEMAC_REPO/main/installer.sh" -o /tmp/nemac-installer.sh
                     sudo bash /tmp/nemac-installer.sh --uninstall
                     rm -f /tmp/nemac-installer.sh
                 fi
@@ -81,9 +135,8 @@ show_menu() {
 }
 
 case "${1:-}" in
-    diagnose|diag|--diagnose)
-        bash "$NEMAC_DIR/nemac-diagnose.sh"
-        exit 0
+    update|up)
+        do_update
         ;;
     *)
         show_menu

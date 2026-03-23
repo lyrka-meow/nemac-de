@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+# nemac-updator — GUI update checker for Nemac DE
+# Launched from Settings → "Обновить DE" (about.openUpdator())
+#
+
+NEMAC_REPO="lyrka-meow/nemac-de"
+GITHUB_API="https://api.github.com/repos/$NEMAC_REPO/releases/latest"
+VERSION_FILE="/etc/nemac"
+
+get_installed_version() {
+    if [ -f "$VERSION_FILE" ]; then
+        grep "Version" "$VERSION_FILE" 2>/dev/null | cut -d= -f2 | tr -d ' '
+    else
+        echo "0"
+    fi
+}
+
+show_dialog() {
+    local title="$1" text="$2"
+    if command -v kdialog &>/dev/null; then
+        kdialog --title "$title" --msgbox "$text"
+    elif command -v zenity &>/dev/null; then
+        zenity --info --title="$title" --text="$text" --width=350
+    else
+        notify-send "$title" "$text" 2>/dev/null || echo "$title: $text"
+    fi
+}
+
+show_question() {
+    local title="$1" text="$2"
+    if command -v kdialog &>/dev/null; then
+        kdialog --title "$title" --yesno "$text"
+        return $?
+    elif command -v zenity &>/dev/null; then
+        zenity --question --title="$title" --text="$text" --width=350
+        return $?
+    else
+        return 0
+    fi
+}
+
+show_progress() {
+    local title="$1"
+    if command -v kdialog &>/dev/null; then
+        local dbus_ref
+        dbus_ref=$(kdialog --title "$title" --progressbar "Скачиваю обновление..." 0)
+        qdbus $dbus_ref showCancelButton false 2>/dev/null
+        echo "$dbus_ref"
+    fi
+}
+
+close_progress() {
+    local ref="$1"
+    if [ -n "$ref" ] && command -v qdbus &>/dev/null; then
+        qdbus $ref close 2>/dev/null
+    fi
+}
+
+do_update() {
+    local current_ver
+    current_ver=$(get_installed_version)
+
+    local release_info
+    release_info=$(curl -fsSL "$GITHUB_API" 2>/dev/null)
+
+    if [ -z "$release_info" ]; then
+        show_dialog "Nemac DE" "Не удалось проверить обновления.\nПроверьте подключение к интернету."
+        exit 1
+    fi
+
+    local remote_tag remote_ver download_url
+    remote_tag=$(echo "$release_info" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+    remote_ver="${remote_tag#v}"
+
+    if [ -z "$remote_ver" ]; then
+        show_dialog "Nemac DE" "Релизы не найдены на GitHub.\nРазработчик ещё не опубликовал бинарники."
+        exit 1
+    fi
+
+    if [ "$current_ver" = "$remote_ver" ]; then
+        show_dialog "Nemac DE" "У вас последняя версия ($current_ver).\nОбновление не требуется."
+        exit 0
+    fi
+
+    download_url=$(echo "$release_info" | grep '"browser_download_url"' | grep '\.tar\.gz"' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
+
+    if [ -z "$download_url" ]; then
+        show_dialog "Nemac DE" "Бинарный пакет не найден в релизе $remote_tag."
+        exit 1
+    fi
+
+    if ! show_question "Nemac DE — Обновление" "Установлена: v$current_ver\nДоступна: v$remote_ver\n\nОбновить Nemac DE?"; then
+        exit 0
+    fi
+
+    local tmpfile="/tmp/nemac-update-$remote_ver.tar.gz"
+    local progress_ref
+    progress_ref=$(show_progress "Nemac DE")
+
+    curl -fSL "$download_url" -o "$tmpfile" 2>/dev/null
+    local dl_status=$?
+
+    close_progress "$progress_ref"
+
+    if [ $dl_status -ne 0 ] || [ ! -f "$tmpfile" ]; then
+        show_dialog "Nemac DE" "Ошибка скачивания.\nПроверьте подключение к интернету."
+        exit 1
+    fi
+
+    pkexec bash -c "tar xzf '$tmpfile' -C / && rm -f '$tmpfile'"
+    local install_status=$?
+
+    if [ $install_status -eq 0 ]; then
+        show_dialog "Nemac DE" "Обновлено до v$remote_ver!\n\nПерезайдите в сессию, чтобы изменения вступили в силу."
+    else
+        show_dialog "Nemac DE" "Ошибка установки. Попробуйте позже\nили обновите вручную через терминал:\n\nnemac"
+        rm -f "$tmpfile" 2>/dev/null
+    fi
+}
+
+do_update

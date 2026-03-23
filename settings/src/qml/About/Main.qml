@@ -93,7 +93,7 @@ ItemPage {
             StandardButton {
                 Layout.fillWidth: true
                 visible: about.isNemacDE
-                text: qsTr("Software Update")
+                text: qsTr("Обновить DE")
                 onClicked: {
                     about.openUpdator()
                 }
