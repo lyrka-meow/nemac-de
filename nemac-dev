@@ -9,10 +9,16 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-NEMAC_DIR="/opt/nemac-de"
-NEMAC_VERSION="0.8"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -d "$SCRIPT_DIR/.git" ]; then
+    NEMAC_DIR="$SCRIPT_DIR"
+else
+    NEMAC_DIR="/opt/nemac-de"
+fi
+NEMAC_VERSION="1.0"
 NEMAC_REPO="lyrka-meow/nemac-de"
-STAGING_DIR="/tmp/nemac-staging"
+LOG_DIR="${NEMAC_DIR}/.nemac-build-logs"
+STAGING_DIR="${NEMAC_DIR}/.nemac-staging"
 TARBALL_NAME="nemac-de-${NEMAC_VERSION}-x86_64.tar.gz"
 
 BUILD_ORDER=(
@@ -67,7 +73,8 @@ cmd_build() {
     print_header
     echo -e "${BLUE}[build]${NC} Устанавливаю зависимости для сборки..."
 
-    sudo pacman -S --needed --noconfirm "${BUILD_DEPS[@]}" > /tmp/nemac-deps.log 2>&1
+    mkdir -p "$LOG_DIR"
+    sudo pacman -S --needed --noconfirm "${BUILD_DEPS[@]}" > "$LOG_DIR/nemac-deps.log" 2>&1
     echo -e "${GREEN}  ✓${NC} Зависимости установлены"
 
     if [ ! -d "$NEMAC_DIR/.git" ]; then
@@ -95,8 +102,8 @@ cmd_build() {
         mkdir -p "$src_dir/build"
         cd "$src_dir/build"
 
-        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
-            if make -j"$(nproc)" > /tmp/nemac-make-$component.log 2>&1; then
+        if cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
+            if make -j"$(nproc)" > "$LOG_DIR/nemac-make-$component.log" 2>&1; then
                 sudo make install > /dev/null 2>&1
                 echo -e "  ${GREEN}✓${NC} [$current/$total] $component"
             else
@@ -112,7 +119,7 @@ cmd_build() {
     echo ""
     if [ ${#failed[@]} -gt 0 ]; then
         echo -e "${RED}  Ошибки: ${failed[*]}${NC}"
-        echo -e "  ${YELLOW}Логи: /tmp/nemac-cmake-*.log, /tmp/nemac-make-*.log${NC}"
+        echo -e "  ${YELLOW}Логи: $LOG_DIR/nemac-cmake-*.log, nemac-make-*.log${NC}"
     else
         echo -e "${GREEN}  Все компоненты собраны и установлены.${NC}"
     fi
@@ -129,6 +136,7 @@ cmd_package() {
         exit 1
     fi
 
+    mkdir -p "$LOG_DIR"
     rm -rf "$STAGING_DIR"
     mkdir -p "$STAGING_DIR"
 
@@ -150,12 +158,12 @@ cmd_package() {
             echo -e "  ${YELLOW}!${NC} $component — не собран, собираю..."
             mkdir -p "$build_dir"
             cd "$build_dir"
-            if ! cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > /tmp/nemac-cmake-$component.log 2>&1; then
+            if ! cmake -Wno-dev -DCMAKE_WARN_DEPRECATED=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr .. > "$LOG_DIR/nemac-cmake-$component.log" 2>&1; then
                 failed+=("$component")
                 echo -e "  ${RED}✗${NC} $component (cmake failed)"
                 continue
             fi
-            if ! make -j"$(nproc)" > /tmp/nemac-make-$component.log 2>&1; then
+            if ! make -j"$(nproc)" > "$LOG_DIR/nemac-make-$component.log" 2>&1; then
                 failed+=("$component")
                 echo -e "  ${RED}✗${NC} $component (make failed)"
                 continue

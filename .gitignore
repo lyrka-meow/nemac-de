@@ -1,0 +1,4 @@
+# Binary release artifacts (build locally with: nemac-dev package)
+nemac-de-*-x86_64.tar.gz
+.nemac-staging/
+.nemac-build-logs/
