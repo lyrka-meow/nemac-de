@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(QT Core Gui Widgets Quick QuickControls2 X11Extras DBus Xml Concurrent LinguistTools)
+set(QT Core Gui Widgets Quick QuickControls2 X11Extras DBus Xml Concurrent Network LinguistTools)
 find_package(Qt5 REQUIRED ${QT})
 find_package(X11 REQUIRED)
 find_package(Freetype REQUIRED)
@@ -86,6 +86,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt5::Xml
         Qt5::X11Extras
         Qt5::Concurrent
+        Qt5::Network
         # NemacUI
 
         KF5::NetworkManagerQt

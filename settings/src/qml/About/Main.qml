@@ -6,7 +6,7 @@
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -90,12 +90,51 @@ ItemPage {
                 height: NemacUI.Units.smallSpacing
             }
 
-            StandardButton {
+            ColumnLayout {
                 Layout.fillWidth: true
                 visible: about.isNemacDE
-                text: qsTr("Обновить DE")
-                onClicked: {
-                    about.openUpdator()
+                spacing: NemacUI.Units.smallSpacing
+
+                StandardButton {
+                    Layout.fillWidth: true
+                    text: qsTr("Обновить DE")
+                    enabled: !about.deUpdateBusy
+                    onClicked: about.startDeUpdate()
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    visible: about.deUpdateStatus.length > 0
+                    text: about.deUpdatePhase === "downloading"
+                          ? about.deUpdateStatus + " — " + Math.round(about.deUpdateProgress * 100) + "%"
+                          : about.deUpdateStatus
+                    wrapMode: Text.WordWrap
+                    opacity: 0.9
+                }
+
+                ProgressBar {
+                    Layout.fillWidth: true
+                    visible: about.deUpdatePhase === "downloading"
+                    from: 0
+                    to: 1
+                    value: about.deUpdateProgress
+                }
+
+                BusyIndicator {
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitWidth: 48
+                    implicitHeight: 48
+                    visible: about.deUpdateBusy
+                             && (about.deUpdatePhase === "checking"
+                                 || about.deUpdatePhase === "installing")
+                    running: visible
+                }
+
+                StandardButton {
+                    Layout.fillWidth: true
+                    visible: about.deUpdateCanCancel
+                    text: qsTr("Остановить")
+                    onClicked: about.cancelDeUpdate()
                 }
             }
         }
