@@ -42,7 +42,8 @@ show_menu() {
         show_status
 
         echo -e "  ${GREEN}1${NC})  Обновить"
-        echo -e "  ${RED}2${NC})  Удалить Nemac DE"
+        echo -e "  ${CYAN}2${NC})  Диагностика"
+        echo -e "  ${RED}3${NC})  Удалить Nemac DE"
         echo -e "  ${RED}0${NC})  Выход"
         echo ""
         read -rp "  > " choice
@@ -58,6 +59,11 @@ show_menu() {
                 read -rp "  Нажмите Enter..."
                 ;;
             2)
+                bash "$NEMAC_DIR/nemac-diagnose.sh"
+                echo ""
+                read -rp "  Нажмите Enter..."
+                ;;
+            3)
                 echo ""
                 read -rp "  Удалить Nemac DE? (y/N): " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
@@ -74,4 +80,12 @@ show_menu() {
     done
 }
 
-show_menu
+case "${1:-}" in
+    diagnose|diag|--diagnose)
+        bash "$NEMAC_DIR/nemac-diagnose.sh"
+        exit 0
+        ;;
+    *)
+        show_menu
+        ;;
+esac
