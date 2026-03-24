@@ -88,6 +88,7 @@ About::About(QObject *parent)
     : QObject(parent)
     , m_nam(new QNetworkAccessManager(this))
 {
+    m_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
 }
 
 About::~About()
