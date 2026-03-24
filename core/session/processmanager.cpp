@@ -209,12 +209,7 @@ void ProcessManager::restartDesktopShell()
     }
     QThread::msleep(400);
 
-    QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
-                          QStringLiteral("/KWin"),
-                          QStringLiteral("org.kde.KWin"),
-                          QDBusConnection::sessionBus());
-    if (kwin.isValid())
-        kwin.call(QStringLiteral("replace"));
+    nemac_kwin_replace();
 
     startDaemonProcess();
     startDesktopProcessEntries(desktopProcessEntries());

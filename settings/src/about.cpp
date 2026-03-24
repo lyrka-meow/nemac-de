@@ -43,6 +43,8 @@
 #include <QDBusInterface>
 #include <QCoreApplication>
 
+#include "kwinscripts.h"
+
 #ifdef Q_OS_LINUX
 #include <sys/sysinfo.h>
 #elif defined(Q_OS_FREEBSD)
@@ -728,12 +730,7 @@ void About::onPkexecFinished(int exitCode, QProcess::ExitStatus status)
         if (session.isValid()) {
             session.call(QStringLiteral("restartDesktopShell"));
         } else {
-            QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
-                                QStringLiteral("/KWin"),
-                                QStringLiteral("org.kde.KWin"),
-                                QDBusConnection::sessionBus());
-            if (kwin.isValid())
-                kwin.call(QStringLiteral("replace"));
+            nemac_kwin_replace();
         }
 
         // New binaries on disk; restart «Настройки» so this app matches the new tree.

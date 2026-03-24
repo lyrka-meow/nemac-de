@@ -9,4 +9,7 @@
 /** mode: 0 floating, 1 tiling, 2 scrolling */
 void nemac_apply_kwin_window_mode(int mode);
 
+/** Перезапуск KWin (DBus replace; при ошибке — kwin_wayland/kwin_x11 --replace). */
+void nemac_kwin_replace();
+
 #endif

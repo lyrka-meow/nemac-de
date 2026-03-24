@@ -7,8 +7,13 @@
 
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QDBusMessage>
 #include <QFile>
+#include <QFileInfo>
+#include <QProcess>
+#include <QDebug>
 #include <QStringLiteral>
+#include <QByteArray>
 
 static QString resolveScriptMainJs(const QString &pluginId)
 {
@@ -62,4 +67,45 @@ void nemac_apply_kwin_window_mode(int mode)
                           QDBusConnection::sessionBus());
     if (kwin.isValid())
         kwin.call(QStringLiteral("reconfigure"));
+}
+
+static bool tryStartKwinReplaceCli()
+{
+    QStringList candidates;
+    if (!qgetenv("WAYLAND_DISPLAY").isEmpty()) {
+        candidates << QStringLiteral("/usr/bin/kwin_wayland")
+                   << QStringLiteral("/usr/bin/kwin");
+    } else {
+        candidates << QStringLiteral("/usr/bin/kwin_x11")
+                   << QStringLiteral("/usr/bin/kwin");
+    }
+    for (const QString &bin : candidates) {
+        const QFileInfo fi(bin);
+        if (!fi.isExecutable())
+            continue;
+        if (QProcess::startDetached(bin, QStringList({QStringLiteral("--replace")}))) {
+            qWarning() << "nemac_kwin_replace: CLI" << bin << "--replace";
+            return true;
+        }
+    }
+    qWarning() << "nemac_kwin_replace: no kwin --replace could be started";
+    return false;
+}
+
+void nemac_kwin_replace()
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.kde.KWin"),
+        QStringLiteral("/KWin"),
+        QStringLiteral("org.kde.KWin"),
+        QStringLiteral("replace"));
+    QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 30000);
+    if (reply.type() == QDBusMessage::ReplyMessage)
+        return;
+
+    if (reply.type() == QDBusMessage::ErrorMessage)
+        qWarning() << "nemac_kwin_replace: D-Bus replace failed:" << reply.errorMessage();
+    else
+        qWarning() << "nemac_kwin_replace: unexpected D-Bus reply type" << reply.type() << "trying CLI";
+    tryStartKwinReplaceCli();
 }

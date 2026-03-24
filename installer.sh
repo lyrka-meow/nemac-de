@@ -10,7 +10,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 NEMAC_REPO="lyrka-meow/nemac-de"
-NEMAC_VERSION="1.5"
+NEMAC_VERSION="1.6"
 GITHUB_API="https://api.github.com/repos/$NEMAC_REPO/releases/latest"
 NEMAC_BIN="/usr/local/bin/nemac"
 NEMAC_DEV_BIN="/usr/local/bin/nemac-dev"
