@@ -69,6 +69,18 @@ void nemac_apply_kwin_window_mode(int mode)
         kwin.call(QStringLiteral("reconfigure"));
 }
 
+static bool startDetachedKwinReplace(const QString &bin)
+{
+    const QStringList args = {QStringLiteral("--replace")};
+    qint64 pid = 0;
+    /* Наследует окружение процесса (DISPLAY и т.д.); Qt5 не даёт startDetached с явным env. */
+    if (QProcess::startDetached(bin, args, QString(), &pid)) {
+        qWarning() << "nemac_kwin_replace: CLI" << bin << "--replace pid" << pid;
+        return true;
+    }
+    return false;
+}
+
 static bool tryStartKwinReplaceCli()
 {
     QStringList candidates;
@@ -76,6 +88,7 @@ static bool tryStartKwinReplaceCli()
         candidates << QStringLiteral("/usr/bin/kwin_wayland")
                    << QStringLiteral("/usr/bin/kwin");
     } else {
+        /* Xorg: явно kwin_x11 — общий «kwin» иногда не тем путём подхватывается */
         candidates << QStringLiteral("/usr/bin/kwin_x11")
                    << QStringLiteral("/usr/bin/kwin");
     }
@@ -83,10 +96,8 @@ static bool tryStartKwinReplaceCli()
         const QFileInfo fi(bin);
         if (!fi.isExecutable())
             continue;
-        if (QProcess::startDetached(bin, QStringList({QStringLiteral("--replace")}))) {
-            qWarning() << "nemac_kwin_replace: CLI" << bin << "--replace";
+        if (startDetachedKwinReplace(bin))
             return true;
-        }
     }
     qWarning() << "nemac_kwin_replace: no kwin --replace could be started";
     return false;
@@ -101,11 +112,13 @@ void nemac_kwin_replace()
         QStringLiteral("replace"));
     QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 30000);
     if (reply.type() == QDBusMessage::ReplyMessage)
-        return;
-
-    if (reply.type() == QDBusMessage::ErrorMessage)
+        qWarning() << "nemac_kwin_replace: D-Bus replace returned OK";
+    else if (reply.type() == QDBusMessage::ErrorMessage)
         qWarning() << "nemac_kwin_replace: D-Bus replace failed:" << reply.errorMessage();
     else
-        qWarning() << "nemac_kwin_replace: unexpected D-Bus reply type" << reply.type() << "trying CLI";
-    tryStartKwinReplaceCli();
+        qWarning() << "nemac_kwin_replace: unexpected D-Bus reply type" << reply.type();
+
+    /* На Xorg D-Bus часто отвечает успехом, но без реальной подмены процесса — всегда делаем kwin_* --replace. */
+    if (!tryStartKwinReplaceCli())
+        qWarning() << "nemac_kwin_replace: CLI kwin --replace failed (check DISPLAY / session)";
 }

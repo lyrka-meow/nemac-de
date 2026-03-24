@@ -207,7 +207,7 @@ void ProcessManager::restartDesktopShell()
     for (const QString &name : killNames) {
         QProcess::execute(QStringLiteral("killall"), QStringList({QStringLiteral("-q"), name}));
     }
-    QThread::msleep(400);
+    QThread::msleep(800);
 
     nemac_kwin_replace();
 
