@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Id": "nemacscrolling",
+        "Name": "NemacDE Scrolling",
+        "Description": "Niri-style horizontal scrolling layout for Nemac DE",
+        "Icon": "preferences-system-windows-script-test",
+        "EnabledByDefault": false,
+        "License": "GPL",
+        "Version": "1.0"
+    },
+    "KPackageStructure": "KWin/Script",
+    "X-Plasma-API": "javascript"
+}

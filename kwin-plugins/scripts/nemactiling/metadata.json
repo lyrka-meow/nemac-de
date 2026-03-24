@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Id": "nemactiling",
+        "Name": "NemacDE Tiling",
+        "Description": "Master-stack tiling layout for Nemac DE",
+        "Icon": "preferences-system-windows-script-test",
+        "EnabledByDefault": false,
+        "License": "GPL",
+        "Version": "1.0"
+    },
+    "KPackageStructure": "KWin/Script",
+    "X-Plasma-API": "javascript"
+}

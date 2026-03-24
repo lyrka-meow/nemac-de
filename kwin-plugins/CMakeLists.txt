@@ -22,3 +22,8 @@ install(DIRECTORY scripts/nemac_squash DESTINATION /usr/share/kwin/effects)
 install(DIRECTORY scripts/nemac_scale DESTINATION /usr/share/kwin/effects)
 install(DIRECTORY scripts/nemac_popups DESTINATION /usr/share/kwin/effects)
 install(DIRECTORY tabbox/nemac_thumbnail DESTINATION /usr/share/kwin/tabbox)
+
+# KWin 6 uses kwin-wayland data directory
+install(DIRECTORY scripts/nemaclauncher DESTINATION /usr/share/kwin-wayland/scripts)
+install(DIRECTORY scripts/nemactiling DESTINATION /usr/share/kwin-wayland/scripts)
+install(DIRECTORY scripts/nemacscrolling DESTINATION /usr/share/kwin-wayland/scripts)

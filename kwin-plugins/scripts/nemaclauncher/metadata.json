@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Id": "nemaclauncher",
+        "Name": "NemacDE Launcher",
+        "Description": "Force the nemac-launcher window keep in screen area",
+        "Icon": "preferences-system-windows-script-test",
+        "EnabledByDefault": true,
+        "License": "GPL",
+        "Version": "0.1"
+    },
+    "KPackageStructure": "KWin/Script",
+    "X-Plasma-API": "javascript"
+}

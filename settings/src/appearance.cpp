@@ -18,6 +18,7 @@
  */
 
 #include "appearance.h"
+#include "kwinscripts.h"
 
 #include <QDBusConnection>
 #include <QDBusInterface>
@@ -308,7 +309,7 @@ void Appearance::setWindowMode(int windowMode)
         m_kwinSettings->setValue("nemacscrollingEnabled", m_windowMode == 2);
         m_kwinSettings->endGroup();
         m_kwinSettings->sync();
-        QDBusInterface("org.kde.KWin", "/KWin").call("reconfigure");
+        nemac_apply_kwin_window_mode(m_windowMode);
         emit windowModeChanged();
     }
 }

@@ -19,6 +19,7 @@
 
 #include "processmanager.h"
 #include "application.h"
+#include "kwinscripts.h"
 
 #include <QCoreApplication>
 #include <QStandardPaths>
@@ -63,6 +64,19 @@ void ProcessManager::start()
 {
     startWindowManager();
     startDaemonProcess();
+
+    // KWin 6: KWin/Script must be loaded via org.kde.kwin.Scripting (loadScript + start);
+    // kwinrc [Plugins] + reconfigure alone does not start packaged scripts reliably.
+    QTimer::singleShot(800, this, []() {
+        QSettings s(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/kwinrc"),
+                      QSettings::IniFormat);
+        s.beginGroup(QStringLiteral("Plugins"));
+        const bool tiling = s.value(QStringLiteral("nemactilingEnabled"), false).toBool();
+        const bool scrolling = s.value(QStringLiteral("nemacscrollingEnabled"), false).toBool();
+        s.endGroup();
+        const int mode = scrolling ? 2 : (tiling ? 1 : 0);
+        nemac_apply_kwin_window_mode(mode);
+    });
 }
 
 void ProcessManager::logout()
