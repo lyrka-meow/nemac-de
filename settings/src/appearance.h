@@ -37,6 +37,7 @@ class Appearance : public QObject
     Q_PROPERTY(bool dockRoundedWindow READ dockRoundedWindow WRITE setDockRoundedWindow NOTIFY dockRoundedWindowChanged)
     Q_PROPERTY(bool systemEffects READ systemEffects WRITE setSystemEffects NOTIFY systemEffectsChanged)
     Q_PROPERTY(int minimiumAnimation READ minimiumAnimation WRITE setMinimiumAnimation NOTIFY minimiumAnimationChanged)
+    Q_PROPERTY(int windowMode READ windowMode WRITE setWindowMode NOTIFY windowModeChanged)
 
 public:
     explicit Appearance(QObject *parent = nullptr);
@@ -78,6 +79,9 @@ public:
     int minimiumAnimation() const;
     void setMinimiumAnimation(int minimiumAnimation);
 
+    int windowMode() const;
+    void setWindowMode(int windowMode);
+
 signals:
     void dockIconSizeChanged();
     void dockDirectionChanged();
@@ -89,6 +93,7 @@ signals:
     void dockRoundedWindowChanged();
     void systemEffectsChanged();
     void minimiumAnimationChanged();
+    void windowModeChanged();
 
 private:
     QDBusInterface m_interface;
@@ -104,6 +109,7 @@ private:
 
     bool m_systemEffects;
     int m_minimiumAnimation;
+    int m_windowMode;
 };
 
 #endif // APPEARANCE_H

@@ -14,6 +14,9 @@ kwin4_effect_squashEnabled=false
 kwin4_effect_translucencyEnabled=false
 magiclampEnabled=false
 
+nemactilingEnabled=false
+nemacscrollingEnabled=false
+
 nemac_scaleEnabled = true
 
 

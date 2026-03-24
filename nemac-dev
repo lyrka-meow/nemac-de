@@ -15,7 +15,7 @@ if [ -d "$SCRIPT_DIR/.git" ]; then
 else
     NEMAC_DIR="/opt/nemac-de"
 fi
-NEMAC_VERSION="1.0"
+NEMAC_VERSION="1.1"
 NEMAC_REPO="lyrka-meow/nemac-de"
 LOG_DIR="${NEMAC_DIR}/.nemac-build-logs"
 STAGING_DIR="${NEMAC_DIR}/.nemac-staging"

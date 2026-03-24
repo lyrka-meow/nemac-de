@@ -138,6 +138,34 @@ ItemPage {
             }
 
             RoundedItem {
+                RowLayout {
+                    spacing: NemacUI.Units.largeSpacing * 2
+
+                    Label {
+                        text: qsTr("Window mode")
+                    }
+
+                    TabBar {
+                        Layout.fillWidth: true
+                        currentIndex: appearance.windowMode
+                        onCurrentIndexChanged: appearance.windowMode = currentIndex
+
+                        TabButton {
+                            text: qsTr("Floating")
+                        }
+
+                        TabButton {
+                            text: qsTr("Tiling")
+                        }
+
+                        TabButton {
+                            text: qsTr("Scrolling")
+                        }
+                    }
+                }
+            }
+
+            RoundedItem {
                 Label {
                     text: qsTr("Accent color")
                     color: NemacUI.Theme.disabledTextColor

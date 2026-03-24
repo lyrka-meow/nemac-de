@@ -54,6 +54,9 @@ Appearance::Appearance(QObject *parent)
     m_kwinSettings->endGroup();
     m_kwinSettings->beginGroup("Plugins");
     m_minimiumAnimation = m_kwinSettings->value("magiclampEnabled").toBool() ? 1 : 0;
+    bool tilingOn = m_kwinSettings->value("nemactilingEnabled", false).toBool();
+    bool scrollingOn = m_kwinSettings->value("nemacscrollingEnabled", false).toBool();
+    m_windowMode = scrollingOn ? 2 : (tilingOn ? 1 : 0);
     m_kwinSettings->endGroup();
 
     // Init
@@ -288,5 +291,24 @@ void Appearance::setMinimiumAnimation(int minimiumAnimation)
         m_kwinSettings->sync();
         QDBusInterface("org.kde.KWin", "/KWin").call("reconfigure");
         emit minimiumAnimationChanged();
+    }
+}
+
+int Appearance::windowMode() const
+{
+    return m_windowMode;
+}
+
+void Appearance::setWindowMode(int windowMode)
+{
+    if (m_windowMode != windowMode) {
+        m_windowMode = windowMode;
+        m_kwinSettings->beginGroup("Plugins");
+        m_kwinSettings->setValue("nemactilingEnabled", m_windowMode == 1);
+        m_kwinSettings->setValue("nemacscrollingEnabled", m_windowMode == 2);
+        m_kwinSettings->endGroup();
+        m_kwinSettings->sync();
+        QDBusInterface("org.kde.KWin", "/KWin").call("reconfigure");
+        emit windowModeChanged();
     }
 }
