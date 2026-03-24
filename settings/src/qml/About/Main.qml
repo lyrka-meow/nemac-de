@@ -136,6 +136,13 @@ ItemPage {
                     text: qsTr("Остановить")
                     onClicked: about.cancelDeUpdate()
                 }
+
+                StandardButton {
+                    Layout.fillWidth: true
+                    visible: about.deUpdateShowRestart
+                    text: qsTr("Перезапустить сессию")
+                    onClicked: about.restartSessionAfterDeUpdate()
+                }
             }
         }
     }
