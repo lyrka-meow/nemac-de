@@ -89,6 +89,7 @@ public:
 private slots:
     void onReleasesFinished();
     void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+    void onDownloadReadyRead();
     void onDownloadFinished();
     void onPkexecFinished(int exitCode, QProcess::ExitStatus status);
 

@@ -380,7 +380,17 @@ void About::startDownload(const QUrl &url)
 
     m_reply = m_nam->get(req);
     connect(m_reply, &QNetworkReply::downloadProgress, this, &About::onDownloadProgress);
+    connect(m_reply, &QNetworkReply::readyRead, this, &About::onDownloadReadyRead);
     connect(m_reply, &QNetworkReply::finished, this, &About::onDownloadFinished);
+}
+
+void About::onDownloadReadyRead()
+{
+    if (!m_reply || !m_tempFile || !m_tempFile->isOpen())
+        return;
+    const QByteArray chunk = m_reply->readAll();
+    if (!chunk.isEmpty())
+        m_tempFile->write(chunk);
 }
 
 void About::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
@@ -426,23 +436,20 @@ void About::onDownloadFinished()
         return;
     }
 
-    const QByteArray data = reply->readAll();
-    if (data.isEmpty() || !m_tempFile) {
+    // Remaining bytes (large GitHub assets are often delivered in chunks; readAll() in
+    // finished() alone can be empty even when the transfer succeeded).
+    const QByteArray tail = reply->readAll();
+    if (!tail.isEmpty() && m_tempFile && m_tempFile->isOpen())
+        m_tempFile->write(tail);
+    m_tempFile->flush();
+
+    if (!m_tempFile || m_tempFile->size() <= 0) {
         setDeUpdateState(false, QStringLiteral("error"),
                          QStringLiteral("Пустой ответ при загрузке."), 0.0, false);
         delete m_tempFile;
         m_tempFile = nullptr;
         return;
     }
-
-    if (m_tempFile->write(data) != data.size()) {
-        setDeUpdateState(false, QStringLiteral("error"),
-                         QStringLiteral("Не удалось записать архив."), 0.0, false);
-        delete m_tempFile;
-        m_tempFile = nullptr;
-        return;
-    }
-    m_tempFile->flush();
     m_installTarballPath = m_tempFile->fileName();
     m_tempFile->setAutoRemove(false);
     m_tempFile->close();
