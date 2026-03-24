@@ -56,6 +56,11 @@ public slots:
         m_processManager->startDesktopProcess();
     }
 
+    /** Restart KWin, settings-daemon, dock, statusbar, etc. without logging out (no TTY). */
+    void restartDesktopShell() {
+        m_processManager->restartDesktopShell();
+    }
+
     void updateNetworkProxy() {
         m_networkProxyManager->update();
     }

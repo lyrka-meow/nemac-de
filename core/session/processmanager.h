@@ -25,6 +25,7 @@
 #include <QProcess>
 #include <QEventLoop>
 #include <QMap>
+#include <QPair>
 
 class Application;
 class ProcessManager : public QObject, public QAbstractNativeEventFilter
@@ -43,9 +44,15 @@ public:
     void startDaemonProcess();
     void loadAutoStartProcess();
 
+    /** Kill and respawn DE daemons + desktop programs; KWin replace. Does not run autostart .desktop again. */
+    void restartDesktopShell();
+
     bool nativeEventFilter(const QByteArray & eventType, void * message, long * result) override;
 
 private:
+    QList<QPair<QString, QStringList>> desktopProcessEntries() const;
+    void startDesktopProcessEntries(const QList<QPair<QString, QStringList>> &list);
+
     Application *m_app;
     QMap<QString, QProcess *> m_systemProcess;
     QMap<QString, QProcess *> m_autoStartProcess;

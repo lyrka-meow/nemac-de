@@ -51,9 +51,6 @@ class About : public QObject
     Q_PROPERTY(QString deUpdateStatus READ deUpdateStatus NOTIFY deUpdateStateChanged)
     Q_PROPERTY(bool deUpdateCanCancel READ deUpdateCanCancel NOTIFY deUpdateStateChanged)
     Q_PROPERTY(QString deUpdatePhase READ deUpdatePhase NOTIFY deUpdateStateChanged)
-    /** true after successful tarball install — show «Перезапустить сессию» */
-    Q_PROPERTY(bool deUpdateShowRestart READ deUpdateShowRestart NOTIFY deUpdateStateChanged)
-
 signals:
     void deUpdateStateChanged();
 
@@ -82,12 +79,8 @@ public:
     QString deUpdateStatus() const { return m_deUpdateStatus; }
     bool deUpdateCanCancel() const { return m_deUpdateCanCancel; }
     QString deUpdatePhase() const { return m_deUpdatePhase; }
-    bool deUpdateShowRestart() const { return m_deUpdateShowRestart; }
-
     Q_INVOKABLE void startDeUpdate();
     Q_INVOKABLE void cancelDeUpdate();
-    /** Ends the graphical session (returns to login manager), like logging out */
-    Q_INVOKABLE void restartSessionAfterDeUpdate();
     /** @deprecated use startDeUpdate() — kept for compatibility */
     Q_INVOKABLE void openUpdator();
 
@@ -104,7 +97,6 @@ private:
                           double progress, bool canCancel);
     void startDownload(const QUrl &url);
     void startInstall(const QString &tarballPath);
-    void restartKWinAfterDeUpdate();
     QString installedVersionString() const;
     static QString normalizeTag(const QString &tag);
 
@@ -119,7 +111,6 @@ private:
     QString m_deUpdateStatus;
     bool m_deUpdateCanCancel = false;
     QString m_deUpdatePhase = QStringLiteral("idle");
-    bool m_deUpdateShowRestart = false;
 };
 
 #endif // ABOUT_H

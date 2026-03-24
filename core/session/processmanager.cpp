@@ -30,6 +30,7 @@
 #include <QTimer>
 #include <QThread>
 #include <QDir>
+#include <QFile>
 
 #include <QDBusInterface>
 #include <QDBusPendingCall>
@@ -117,34 +118,32 @@ void ProcessManager::startWindowManager()
     m_waitLoop = nullptr;
 }
 
-void ProcessManager::startDesktopProcess()
+QList<QPair<QString, QStringList>> ProcessManager::desktopProcessEntries() const
 {
-    // When the nemac-settings-daemon theme module is loaded, start the desktop.
-    // In the way, there will be no problem that desktop and launcher can't get wallpaper.
-
     QList<QPair<QString, QStringList>> list;
-    // Desktop components
-    list << qMakePair(QString("nemac-notificationd"), QStringList());
-    list << qMakePair(QString("nemac-statusbar"), QStringList());
-    list << qMakePair(QString("nemac-dock"), QStringList());
-    list << qMakePair(QString("nemac-filemanager"), QStringList("--desktop"));
-    list << qMakePair(QString("nemac-launcher"), QStringList());
-    list << qMakePair(QString("nemac-powerman"), QStringList());
-    list << qMakePair(QString("nemac-clipboard"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-notificationd"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-statusbar"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-dock"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-filemanager"), QStringList({QStringLiteral("--desktop")}));
+    list << qMakePair(QStringLiteral("nemac-launcher"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-powerman"), QStringList());
+    list << qMakePair(QStringLiteral("nemac-clipboard"), QStringList());
 
-    // For NemacDE.
-    if (QFile("/usr/bin/nemac-welcome").exists() &&
-            !QFile("/run/live/medium/live/filesystem.squashfs").exists()) {
-        QSettings settings("nemacde", "login");
-
-        if (!settings.value("Finished", false).toBool()) {
-            list << qMakePair(QString("/usr/bin/nemac-welcome"), QStringList());
+    if (QFile(QStringLiteral("/usr/bin/nemac-welcome")).exists()
+        && !QFile(QStringLiteral("/run/live/medium/live/filesystem.squashfs")).exists()) {
+        QSettings settings(QStringLiteral("nemacde"), QStringLiteral("login"));
+        if (!settings.value(QStringLiteral("Finished"), false).toBool()) {
+            list << qMakePair(QStringLiteral("/usr/bin/nemac-welcome"), QStringList());
         } else {
-            list << qMakePair(QString("/usr/bin/nemac-welcome"), QStringList() << "-d");
+            list << qMakePair(QStringLiteral("/usr/bin/nemac-welcome"), QStringList({QStringLiteral("-d")}));
         }
     }
+    return list;
+}
 
-    for (QPair<QString, QStringList> pair : list) {
+void ProcessManager::startDesktopProcessEntries(const QList<QPair<QString, QStringList>> &list)
+{
+    for (const QPair<QString, QStringList> &pair : list) {
         QProcess *process = new QProcess;
         process->setProcessChannelMode(QProcess::ForwardedChannels);
         process->setProgram(pair.first);
@@ -154,16 +153,82 @@ void ProcessManager::startDesktopProcess()
 
         qDebug() << "Load DE components: " << pair.first << pair.second;
 
-        // Add to map
         if (process->exitCode() == 0) {
             m_autoStartProcess.insert(pair.first, process);
         } else {
             process->deleteLater();
         }
     }
+}
+
+void ProcessManager::startDesktopProcess()
+{
+    // When the nemac-settings-daemon theme module is loaded, start the desktop.
+    // In the way, there will be no problem that desktop and launcher can't get wallpaper.
+
+    startDesktopProcessEntries(desktopProcessEntries());
 
     // Auto start
     QTimer::singleShot(100, this, &ProcessManager::loadAutoStartProcess);
+}
+
+void ProcessManager::restartDesktopShell()
+{
+    QMapIterator<QString, QProcess *> it(m_autoStartProcess);
+    while (it.hasNext()) {
+        it.next();
+        QProcess *p = it.value();
+        if (!p)
+            continue;
+        if (p->state() != QProcess::NotRunning) {
+            p->terminate();
+            if (!p->waitForFinished(4000))
+                p->kill();
+            p->waitForFinished(2000);
+        }
+        delete p;
+    }
+    m_autoStartProcess.clear();
+
+    static const QStringList killNames = {
+        QStringLiteral("nemac-notificationd"),
+        QStringLiteral("nemac-statusbar"),
+        QStringLiteral("nemac-dock"),
+        QStringLiteral("nemac-filemanager"),
+        QStringLiteral("nemac-launcher"),
+        QStringLiteral("nemac-powerman"),
+        QStringLiteral("nemac-clipboard"),
+        QStringLiteral("nemac-settings-daemon"),
+        QStringLiteral("nemac-xembedsniproxy"),
+        QStringLiteral("nemac-gmenuproxy"),
+        QStringLiteral("chotkeys"),
+        QStringLiteral("nemac-welcome"),
+    };
+    for (const QString &name : killNames) {
+        QProcess::execute(QStringLiteral("killall"), QStringList({QStringLiteral("-q"), name}));
+    }
+    QThread::msleep(400);
+
+    QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
+                          QStringLiteral("/KWin"),
+                          QStringLiteral("org.kde.KWin"),
+                          QDBusConnection::sessionBus());
+    if (kwin.isValid())
+        kwin.call(QStringLiteral("replace"));
+
+    startDaemonProcess();
+    startDesktopProcessEntries(desktopProcessEntries());
+
+    QTimer::singleShot(1000, this, []() {
+        QSettings s(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/kwinrc"),
+                      QSettings::IniFormat);
+        s.beginGroup(QStringLiteral("Plugins"));
+        const bool tiling = s.value(QStringLiteral("nemactilingEnabled"), false).toBool();
+        const bool scrolling = s.value(QStringLiteral("nemacscrollingEnabled"), false).toBool();
+        s.endGroup();
+        const int mode = scrolling ? 2 : (tiling ? 1 : 0);
+        nemac_apply_kwin_window_mode(mode);
+    });
 }
 
 void ProcessManager::startDaemonProcess()

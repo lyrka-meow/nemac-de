@@ -18,7 +18,6 @@
  */
 
 #include "about.h"
-#include "kwinscripts.h"
 
 #include <QFile>
 #include <QStorageInfo>
@@ -39,6 +38,7 @@
 #include <QStandardPaths>
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QCoreApplication>
 
 #ifdef Q_OS_LINUX
 #include <sys/sysinfo.h>
@@ -253,8 +253,6 @@ void About::startDeUpdate()
     if (!isNemacDE())
         return;
 
-    m_deUpdateShowRestart = false;
-
     setDeUpdateState(true, QStringLiteral("checking"),
                      QStringLiteral("Проверка обновлений…"), 0.0, true);
 
@@ -282,38 +280,6 @@ void About::cancelDeUpdate()
 void About::openUpdator()
 {
     startDeUpdate();
-}
-
-void About::restartSessionAfterDeUpdate()
-{
-    QDBusInterface session(QStringLiteral("com.nemac.Session"),
-                           QStringLiteral("/Session"),
-                           QStringLiteral("com.nemac.Session"),
-                           QDBusConnection::sessionBus());
-    if (session.isValid())
-        session.call(QStringLiteral("logout"));
-}
-
-void About::restartKWinAfterDeUpdate()
-{
-    QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
-                        QStringLiteral("/KWin"),
-                        QStringLiteral("org.kde.KWin"),
-                        QDBusConnection::sessionBus());
-    if (kwin.isValid())
-        kwin.call(QStringLiteral("replace"));
-
-    // Re-apply KWin/Script modes after KWin respawns (same as session startup delay).
-    QTimer::singleShot(1000, this, []() {
-        QSettings s(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/kwinrc"),
-                    QSettings::IniFormat);
-        s.beginGroup(QStringLiteral("Plugins"));
-        const bool tiling = s.value(QStringLiteral("nemactilingEnabled"), false).toBool();
-        const bool scrolling = s.value(QStringLiteral("nemacscrollingEnabled"), false).toBool();
-        s.endGroup();
-        const int mode = scrolling ? 2 : (tiling ? 1 : 0);
-        nemac_apply_kwin_window_mode(mode);
-    });
 }
 
 void About::onReleasesFinished()
@@ -388,7 +354,6 @@ void About::onReleasesFinished()
     const QVersionNumber rem = QVersionNumber::fromString(remoteVer);
 
     if (!rem.isNull() && !loc.isNull() && rem <= loc) {
-        m_deUpdateShowRestart = false;
         setDeUpdateState(false, QStringLiteral("done"),
                          QStringLiteral("У вас последняя версия (%1). Обновление не требуется.").arg(localVer),
                          0.0, false);
@@ -539,14 +504,31 @@ void About::onPkexecFinished(int exitCode, QProcess::ExitStatus status)
     }
 
     if (exitCode == 0 && status == QProcess::NormalExit) {
-        restartKWinAfterDeUpdate();
-        m_deUpdateShowRestart = true;
+        QDBusInterface session(QStringLiteral("com.nemac.Session"),
+                               QStringLiteral("/Session"),
+                               QStringLiteral("com.nemac.Session"),
+                               QDBusConnection::sessionBus());
+        if (session.isValid()) {
+            session.call(QStringLiteral("restartDesktopShell"));
+        } else {
+            QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
+                                QStringLiteral("/KWin"),
+                                QStringLiteral("org.kde.KWin"),
+                                QDBusConnection::sessionBus());
+            if (kwin.isValid())
+                kwin.call(QStringLiteral("replace"));
+        }
+
+        // New binaries on disk; restart «Настройки» so this app matches the new tree.
+        QTimer::singleShot(2000, QCoreApplication::instance(), []() {
+            QProcess::startDetached(QStringLiteral("nemac-settings"), QStringList(), QString());
+            QCoreApplication::quit();
+        });
+
         setDeUpdateState(false, QStringLiteral("done"),
-                         QStringLiteral("Обновление установлено. KWin перезапущен. Если нужно обновить все "
-                                        "программы сразу — нажмите «Перезапустить сессию» (как выход из системы)."),
+                         QStringLiteral("Обновление установлено. Перезапуск компонентов… Окно настроек откроется снова."),
                          0.0, false);
     } else {
-        m_deUpdateShowRestart = false;
         QFile::remove(path);
         setDeUpdateState(false, QStringLiteral("error"),
                          QStringLiteral("Установка не выполнена (отмена или ошибка)."),
