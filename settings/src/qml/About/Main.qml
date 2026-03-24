@@ -95,6 +95,42 @@ ItemPage {
                 visible: about.isNemacDE
                 spacing: NemacUI.Units.smallSpacing
 
+                Label {
+                    Layout.fillWidth: true
+                    visible: about.releaseInfoSummary.length > 0
+                    text: about.releaseInfoSummary
+                    wrapMode: Text.WordWrap
+                    font.bold: about.releaseUpdateAvailable
+                    color: about.releaseUpdateAvailable ? "#3385FF" : palette.windowText
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    visible: about.releaseInfoSubtext.length > 0
+                    text: about.releaseInfoSubtext
+                    wrapMode: Text.WordWrap
+                    opacity: 0.88
+                    font.pointSize: 11
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: NemacUI.Units.smallSpacing
+                    visible: about.releaseInfoBusy && !about.deUpdateBusy
+
+                    BusyIndicator {
+                        implicitWidth: 28
+                        implicitHeight: 28
+                        running: true
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Проверка релизов…")
+                        opacity: 0.85
+                    }
+                }
+
                 StandardButton {
                     Layout.fillWidth: true
                     text: qsTr("Обновить DE")

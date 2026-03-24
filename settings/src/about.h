@@ -30,6 +30,7 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 class QTemporaryFile;
+class QTimer;
 
 class About : public QObject
 {
@@ -51,14 +52,21 @@ class About : public QObject
     Q_PROPERTY(QString deUpdateStatus READ deUpdateStatus NOTIFY deUpdateStateChanged)
     Q_PROPERTY(bool deUpdateCanCancel READ deUpdateCanCancel NOTIFY deUpdateStateChanged)
     Q_PROPERTY(QString deUpdatePhase READ deUpdatePhase NOTIFY deUpdateStateChanged)
+
+    /** Пассивные сведения о последнем релизе на GitHub (фон + кэш). */
+    Q_PROPERTY(QString releaseInfoSummary READ releaseInfoSummary NOTIFY releaseInfoChanged)
+    Q_PROPERTY(QString releaseInfoSubtext READ releaseInfoSubtext NOTIFY releaseInfoChanged)
+    Q_PROPERTY(bool releaseInfoBusy READ releaseInfoBusy NOTIFY releaseInfoChanged)
+    Q_PROPERTY(bool releaseUpdateAvailable READ releaseUpdateAvailable NOTIFY releaseInfoChanged)
 signals:
     void deUpdateStateChanged();
+    void releaseInfoChanged();
 
 public:
     explicit About(QObject *parent = nullptr);
     ~About() override;
 
-    bool isNemacDE();
+    bool isNemacDE() const;
 
     QString version();
 
@@ -81,11 +89,19 @@ public:
     QString deUpdatePhase() const { return m_deUpdatePhase; }
     Q_INVOKABLE void startDeUpdate();
     Q_INVOKABLE void cancelDeUpdate();
+    /** Запросить сведения о releases/latest (уже вызывается при старте и по таймеру). */
+    Q_INVOKABLE void refreshReleaseInfo();
     /** @deprecated use startDeUpdate() — kept for compatibility */
     Q_INVOKABLE void openUpdator();
 
+    QString releaseInfoSummary() const;
+    QString releaseInfoSubtext() const;
+    bool releaseInfoBusy() const { return m_releaseInfoBusy; }
+    bool releaseUpdateAvailable() const;
+
 private slots:
     void onReleasesFinished();
+    void onReleaseInfoFinished();
     void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
     void onDownloadReadyRead();
     void onDownloadFinished();
@@ -99,9 +115,15 @@ private:
     void startInstall(const QString &tarballPath);
     QString installedVersionString() const;
     static QString normalizeTag(const QString &tag);
+    void loadReleaseCache();
+    void saveReleaseCache() const;
+    void setReleaseInfoFromNetwork(const QString &tagName, const QString &normalizedVer,
+                                   const QString &publishedLabel, bool hasTarball);
+    void setReleaseInfoFetchFailed(const QString &errorHint);
 
     QNetworkAccessManager *m_nam = nullptr;
     QPointer<QNetworkReply> m_reply;
+    QPointer<QNetworkReply> m_releaseInfoReply;
     QPointer<QProcess> m_pkexec;
     QTemporaryFile *m_tempFile = nullptr;
     QString m_installTarballPath;
@@ -111,6 +133,15 @@ private:
     QString m_deUpdateStatus;
     bool m_deUpdateCanCancel = false;
     QString m_deUpdatePhase = QStringLiteral("idle");
+
+    bool m_releaseInfoBusy = false;
+    QString m_cachedRemoteTag;
+    QString m_cachedRemoteVersion;
+    QString m_cachedPublishedLabel;
+    bool m_cachedHasTarball = false;
+    bool m_releaseInfoStale = false;
+    QString m_releaseInfoFetchError;
+    QTimer *m_releasePollTimer = nullptr;
 };
 
 #endif // ABOUT_H

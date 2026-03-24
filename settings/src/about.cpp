@@ -19,6 +19,7 @@
 
 #include "about.h"
 
+#include <QTimer>
 #include <QFile>
 #include <QStorageInfo>
 #include <QRegularExpression>
@@ -35,6 +36,8 @@
 #include <QVersionNumber>
 #include <QUrl>
 #include <QTimer>
+#include <QDateTime>
+#include <QLocale>
 #include <QStandardPaths>
 #include <QDBusConnection>
 #include <QDBusInterface>
@@ -89,19 +92,83 @@ static QString formatByteSize(double size, int precision)
     return QString();
 }
 
+namespace {
+
+struct ParsedLatestRelease {
+    QString tagName;
+    QString normalizedVersion;
+    QString downloadUrl;
+    QString publishedLabel;
+    QString releaseName;
+};
+
+QString normalizeTagString(const QString &tag)
+{
+    QString t = tag.trimmed();
+    if (t.startsWith(QLatin1Char('v'), Qt::CaseInsensitive) && t.size() > 1)
+        t = t.mid(1);
+    return t;
+}
+
+bool parseLatestReleaseJson(const QByteArray &data, ParsedLatestRelease *out, QString *errorMsg)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) {
+        *errorMsg = QStringLiteral("Некорректный ответ сервера.");
+        return false;
+    }
+    const QJsonObject root = doc.object();
+    out->tagName = root.value(QStringLiteral("tag_name")).toString();
+    out->normalizedVersion = normalizeTagString(out->tagName);
+    out->releaseName = root.value(QStringLiteral("name")).toString();
+    const QString published = root.value(QStringLiteral("published_at")).toString();
+    QDateTime dt = QDateTime::fromString(published, Qt::ISODateWithMs);
+    if (!dt.isValid())
+        dt = QDateTime::fromString(published, Qt::ISODate);
+    if (dt.isValid())
+        out->publishedLabel = QLocale().toString(dt.date(), QLocale::ShortFormat);
+    else if (!published.isEmpty())
+        out->publishedLabel = published;
+    out->downloadUrl.clear();
+    const QJsonArray assets = root.value(QStringLiteral("assets")).toArray();
+    for (const QJsonValue &v : assets) {
+        const QJsonObject a = v.toObject();
+        const QString name = a.value(QStringLiteral("name")).toString();
+        if (name.endsWith(QLatin1String(".tar.gz"))) {
+            out->downloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+            break;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
 About::About(QObject *parent)
     : QObject(parent)
     , m_nam(new QNetworkAccessManager(this))
 {
     m_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    if (isNemacDE()) {
+        loadReleaseCache();
+        emit releaseInfoChanged();
+        QTimer::singleShot(400, this, [this]() { refreshReleaseInfo(); });
+        m_releasePollTimer = new QTimer(this);
+        m_releasePollTimer->setInterval(4 * 60 * 60 * 1000);
+        connect(m_releasePollTimer, &QTimer::timeout, this, &About::refreshReleaseInfo);
+        m_releasePollTimer->start();
+    }
 }
 
 About::~About()
 {
     cancelDeUpdate();
+    if (m_releaseInfoReply)
+        m_releaseInfoReply->abort();
 }
 
-bool About::isNemacDE()
+bool About::isNemacDE() const
 {
     if (!QFile::exists("/etc/nemacde"))
         return false;
@@ -240,10 +307,170 @@ QString About::installedVersionString() const
 
 QString About::normalizeTag(const QString &tag)
 {
-    QString t = tag.trimmed();
-    if (t.startsWith(QLatin1Char('v'), Qt::CaseInsensitive) && t.size() > 1)
-        t = t.mid(1);
-    return t;
+    return normalizeTagString(tag);
+}
+
+void About::loadReleaseCache()
+{
+    QSettings s(QSettings::IniFormat, QSettings::UserScope,
+                QStringLiteral("nemacde"), QStringLiteral("nemac-release"));
+    m_cachedRemoteTag = s.value(QStringLiteral("remoteTag")).toString();
+    m_cachedRemoteVersion = s.value(QStringLiteral("remoteVersion")).toString();
+    m_cachedPublishedLabel = s.value(QStringLiteral("published")).toString();
+    m_cachedHasTarball = s.value(QStringLiteral("hasTarball"), true).toBool();
+}
+
+void About::saveReleaseCache() const
+{
+    QSettings s(QSettings::IniFormat, QSettings::UserScope,
+                QStringLiteral("nemacde"), QStringLiteral("nemac-release"));
+    s.setValue(QStringLiteral("remoteTag"), m_cachedRemoteTag);
+    s.setValue(QStringLiteral("remoteVersion"), m_cachedRemoteVersion);
+    s.setValue(QStringLiteral("published"), m_cachedPublishedLabel);
+    s.setValue(QStringLiteral("hasTarball"), m_cachedHasTarball);
+    s.sync();
+}
+
+void About::setReleaseInfoFromNetwork(const QString &tagName, const QString &normalizedVer,
+                                      const QString &publishedLabel, bool hasTarball)
+{
+    m_releaseInfoStale = false;
+    m_releaseInfoFetchError.clear();
+    m_cachedRemoteTag = tagName;
+    m_cachedRemoteVersion = normalizedVer;
+    m_cachedPublishedLabel = publishedLabel;
+    m_cachedHasTarball = hasTarball;
+    saveReleaseCache();
+    emit releaseInfoChanged();
+}
+
+void About::setReleaseInfoFetchFailed(const QString &errorHint)
+{
+    m_releaseInfoStale = true;
+    m_releaseInfoFetchError = errorHint;
+    emit releaseInfoChanged();
+}
+
+QString About::releaseInfoSummary() const
+{
+    if (!isNemacDE())
+        return QString();
+
+    if (m_releaseInfoBusy && m_cachedRemoteVersion.isEmpty())
+        return QStringLiteral("Проверка релизов на GitHub…");
+
+    if (m_cachedRemoteVersion.isEmpty()) {
+        if (m_releaseInfoStale)
+            return QStringLiteral("Не удалось получить сведения о последнем релизе.");
+        return QStringLiteral("Загрузка сведений о релизах…");
+    }
+
+    const QString local = installedVersionString();
+    const QVersionNumber loc = QVersionNumber::fromString(local.isEmpty() ? QStringLiteral("0") : local);
+    const QVersionNumber rem = QVersionNumber::fromString(m_cachedRemoteVersion);
+
+    if (!rem.isNull() && !loc.isNull() && rem > loc) {
+        return QStringLiteral("Доступна новая версия: %1 (установлена %2).")
+                .arg(m_cachedRemoteVersion, local.isEmpty() ? QStringLiteral("?") : local);
+    }
+    if (!rem.isNull() && !loc.isNull() && rem < loc) {
+        return QStringLiteral("Установлена версия %1 новее, чем последний релиз на GitHub (%2).")
+                .arg(local.isEmpty() ? QStringLiteral("?") : local, m_cachedRemoteVersion);
+    }
+    return QStringLiteral("Установлена последняя опубликованная версия (%1).")
+            .arg(local.isEmpty() ? m_cachedRemoteVersion : local);
+}
+
+QString About::releaseInfoSubtext() const
+{
+    if (!isNemacDE())
+        return QString();
+
+    QStringList lines;
+    if (!m_cachedPublishedLabel.isEmpty())
+        lines.append(QStringLiteral("Дата релиза на GitHub: %1").arg(m_cachedPublishedLabel));
+    if (!m_cachedRemoteTag.isEmpty())
+        lines.append(QStringLiteral("Тег: %1").arg(m_cachedRemoteTag));
+    if (!m_cachedHasTarball && !m_cachedRemoteVersion.isEmpty())
+        lines.append(QStringLiteral("В релизе нет .tar.gz — обновление из настроек недоступно."));
+    if (m_releaseInfoStale) {
+        if (m_cachedRemoteVersion.isEmpty())
+            lines.append(QStringLiteral("Ошибка: %1").arg(m_releaseInfoFetchError));
+        else
+            lines.append(QStringLiteral("Свежие данные не получены (%1). Показано по последней удачной проверке.")
+                                 .arg(m_releaseInfoFetchError));
+    }
+    return lines.join(QLatin1Char('\n'));
+}
+
+bool About::releaseUpdateAvailable() const
+{
+    if (!isNemacDE() || m_cachedRemoteVersion.isEmpty())
+        return false;
+    const QString local = installedVersionString();
+    const QVersionNumber loc = QVersionNumber::fromString(local.isEmpty() ? QStringLiteral("0") : local);
+    const QVersionNumber rem = QVersionNumber::fromString(m_cachedRemoteVersion);
+    return !rem.isNull() && !loc.isNull() && rem > loc && m_cachedHasTarball;
+}
+
+void About::refreshReleaseInfo()
+{
+    if (!isNemacDE())
+        return;
+    if (m_releaseInfoReply)
+        return;
+
+    m_releaseInfoBusy = true;
+    emit releaseInfoChanged();
+
+    const QUrl releasesUrl(QStringLiteral("https://api.github.com/repos/lyrka-meow/nemac-de/releases/latest"));
+    QNetworkRequest req(releasesUrl);
+    req.setRawHeader("Accept", "application/vnd.github+json");
+    req.setRawHeader("User-Agent", "Nemac-Settings");
+
+    m_releaseInfoReply = m_nam->get(req);
+    connect(m_releaseInfoReply, &QNetworkReply::finished, this, &About::onReleaseInfoFinished);
+}
+
+void About::onReleaseInfoFinished()
+{
+    QPointer<QNetworkReply> reply = m_releaseInfoReply;
+    m_releaseInfoReply.clear();
+
+    if (!reply)
+        return;
+
+    reply->deleteLater();
+
+    m_releaseInfoBusy = false;
+
+    const QVariant statusVar = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+    const int httpStatus = statusVar.isValid() ? statusVar.toInt() : 0;
+
+    if (reply->error() == QNetworkReply::OperationCanceledError) {
+        emit releaseInfoChanged();
+        return;
+    }
+
+    if (httpStatus == 404) {
+        setReleaseInfoFetchFailed(QStringLiteral("на GitHub нет опубликованного релиза"));
+        return;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        setReleaseInfoFetchFailed(reply->errorString());
+        return;
+    }
+
+    ParsedLatestRelease parsed;
+    QString err;
+    if (!parseLatestReleaseJson(reply->readAll(), &parsed, &err)) {
+        setReleaseInfoFetchFailed(err);
+        return;
+    }
+
+    setReleaseInfoFromNetwork(parsed.tagName, parsed.normalizedVersion, parsed.publishedLabel,
+                              !parsed.downloadUrl.isEmpty());
 }
 
 void About::startDeUpdate()
@@ -308,27 +535,17 @@ void About::onReleasesFinished()
         return;
     }
 
-    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-    if (!doc.isObject()) {
-        setDeUpdateState(false, QStringLiteral("error"),
-                         QStringLiteral("Некорректный ответ сервера."), 0.0, false);
+    const QByteArray payload = reply->readAll();
+    ParsedLatestRelease parsed;
+    QString parseErr;
+    if (!parseLatestReleaseJson(payload, &parsed, &parseErr)) {
+        setDeUpdateState(false, QStringLiteral("error"), parseErr, 0.0, false);
         return;
     }
 
-    const QJsonObject root = doc.object();
-    const QString tagName = root.value(QStringLiteral("tag_name")).toString();
-    const QString remoteVer = normalizeTag(tagName);
-
-    QString downloadUrl;
-    const QJsonArray assets = root.value(QStringLiteral("assets")).toArray();
-    for (const QJsonValue &v : assets) {
-        const QJsonObject a = v.toObject();
-        const QString name = a.value(QStringLiteral("name")).toString();
-        if (name.endsWith(QLatin1String(".tar.gz"))) {
-            downloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-            break;
-        }
-    }
+    const QString &tagName = parsed.tagName;
+    const QString &remoteVer = parsed.normalizedVersion;
+    const QString &downloadUrl = parsed.downloadUrl;
 
     if (downloadUrl.isEmpty()) {
         setDeUpdateState(false, QStringLiteral("error"),
