@@ -85,12 +85,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: NemacUI.Theme.darkMode ? Qt.rgba(0.08, 0.08, 0.1, 0.95) : Qt.rgba(1, 1, 1, 0.92)
+        color: "white"
         radius: NemacUI.Theme.bigRadius
-        border.width: 1
-        border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
-                              NemacUI.Theme.highlightColor.g,
-                              NemacUI.Theme.highlightColor.b, 0.25)
+        opacity: NemacUI.Theme.darkMode ? 0.2 : 0.7
     }
 
     ColumnLayout {

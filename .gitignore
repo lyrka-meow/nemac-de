@@ -3,3 +3,5 @@ nemac-de-*-x86_64.tar.gz
 .nemac-staging/
 .nemac-build-logs/
 core/session/build/
+debian/
+nemac-updator/
