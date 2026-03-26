@@ -169,7 +169,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 font.pointSize: 11
                 elide: Text.ElideMiddle
-                color: NemacUI.Theme.disabledTextColor
+                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.8)
             }
 
             Label {
@@ -180,9 +180,7 @@ Item {
                 font.capitalization: Font.AllUppercase
                 elide: Text.ElideMiddle
                 visible: text.length > 0
-                color: Qt.rgba(NemacUI.Theme.disabledTextColor.r,
-                               NemacUI.Theme.disabledTextColor.g,
-                               NemacUI.Theme.disabledTextColor.b, 0.85)
+                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
             }
         }
 
@@ -193,7 +191,7 @@ Item {
             Label {
                 text: formatTime(seekSlider.value)
                 font.pointSize: 9
-                color: NemacUI.Theme.disabledTextColor
+                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
                 Layout.preferredWidth: 40
             }
 
@@ -216,7 +214,7 @@ Item {
             Label {
                 text: formatTime(control.trackLengthUs)
                 font.pointSize: 9
-                color: NemacUI.Theme.disabledTextColor
+                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
                 Layout.preferredWidth: 40
                 horizontalAlignment: Text.AlignRight
             }
