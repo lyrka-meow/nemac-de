@@ -146,8 +146,13 @@ ItemPage {
                     }
 
                     TabBar {
+                        id: windowModeBar
                         Layout.fillWidth: true
-                        currentIndex: appearance.windowMode
+                        Connections {
+                            target: appearance
+                            onWindowModeChanged: windowModeBar.currentIndex = appearance.windowMode
+                        }
+                        Component.onCompleted: windowModeBar.currentIndex = appearance.windowMode
                         onCurrentIndexChanged: appearance.windowMode = currentIndex
 
                         TabButton {
