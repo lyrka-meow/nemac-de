@@ -148,23 +148,38 @@ ItemPage {
                     TabBar {
                         id: windowModeBar
                         Layout.fillWidth: true
+                        property bool syncing: false
                         Connections {
                             target: appearance
-                            onWindowModeChanged: windowModeBar.currentIndex = appearance.windowMode
+                            onWindowModeChanged: {
+                                syncing = true
+                                windowModeBar.currentIndex = appearance.windowMode
+                                syncing = false
+                            }
                         }
-                        Component.onCompleted: windowModeBar.currentIndex = appearance.windowMode
-                        onCurrentIndexChanged: appearance.windowMode = currentIndex
+                        Component.onCompleted: {
+                            syncing = true
+                            windowModeBar.currentIndex = appearance.windowMode
+                            syncing = false
+                        }
+                        onCurrentIndexChanged: {
+                            if (!syncing)
+                                appearance.windowMode = currentIndex
+                        }
 
                         TabButton {
                             text: qsTr("Floating")
+                            onClicked: appearance.windowMode = 0
                         }
 
                         TabButton {
                             text: qsTr("Tiling")
+                            onClicked: appearance.windowMode = 1
                         }
 
                         TabButton {
                             text: qsTr("Scrolling")
+                            onClicked: appearance.windowMode = 2
                         }
                     }
                 }

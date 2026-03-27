@@ -20,6 +20,9 @@
 #include "appearance.h"
 #include "kwinscripts.h"
 
+#include <KConfigGroup>
+#include <KSharedConfig>
+
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -309,6 +312,13 @@ void Appearance::setWindowMode(int windowMode)
         m_kwinSettings->setValue("nemacscrollingEnabled", m_windowMode == 2);
         m_kwinSettings->endGroup();
         m_kwinSettings->sync();
+
+        KSharedConfig::Ptr kwinCfg = KSharedConfig::openConfig(QStringLiteral("kwinrc"));
+        KConfigGroup plugins(kwinCfg, QStringLiteral("Plugins"));
+        plugins.writeEntry(QStringLiteral("nemactilingEnabled"), m_windowMode == 1);
+        plugins.writeEntry(QStringLiteral("nemacscrollingEnabled"), m_windowMode == 2);
+        plugins.sync();
+
         nemac_apply_kwin_window_mode(m_windowMode);
         emit windowModeChanged();
     }
