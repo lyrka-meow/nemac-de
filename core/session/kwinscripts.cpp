@@ -5,9 +5,13 @@
 
 #include "kwinscripts.h"
 
+#include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusMessage>
+#include <QDBusReply>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
@@ -35,6 +39,30 @@ static QString resolveScriptMainJs(const QString &pluginId)
     return QString();
 }
 
+static void waitScriptsUnloaded(QDBusInterface &scripting)
+{
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < 3000) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        QDBusReply<bool> til(scripting.call(QStringLiteral("isScriptLoaded"), QStringLiteral("nemactiling")));
+        QDBusReply<bool> scr(scripting.call(QStringLiteral("isScriptLoaded"), QStringLiteral("nemacscrolling")));
+        const bool still = (til.isValid() && til.value()) || (scr.isValid() && scr.value());
+        if (!still)
+            return;
+    }
+}
+
+static void loadScriptWhenReady(QDBusInterface &scripting, const QString &path, const QString &pluginId)
+{
+    for (int attempt = 0; attempt < 12; ++attempt) {
+        QDBusReply<int> rid(scripting.call(QStringLiteral("loadScript"), path, pluginId));
+        if (rid.isValid() && rid.value() >= 0)
+            return;
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    }
+}
+
 void nemac_apply_kwin_window_mode(int mode)
 {
     QDBusInterface scripting(QStringLiteral("org.kde.KWin"),
@@ -46,20 +74,19 @@ void nemac_apply_kwin_window_mode(int mode)
 
     scripting.call(QStringLiteral("unloadScript"), QStringLiteral("nemactiling"));
     scripting.call(QStringLiteral("unloadScript"), QStringLiteral("nemacscrolling"));
+    waitScriptsUnloaded(scripting);
 
     if (mode == 1) {
         const QString path = resolveScriptMainJs(QStringLiteral("nemactiling"));
-        if (!path.isEmpty()) {
-            scripting.call(QStringLiteral("loadScript"), path, QStringLiteral("nemactiling"));
-            scripting.call(QStringLiteral("start"));
-        }
+        if (!path.isEmpty())
+            loadScriptWhenReady(scripting, path, QStringLiteral("nemactiling"));
     } else if (mode == 2) {
         const QString path = resolveScriptMainJs(QStringLiteral("nemacscrolling"));
-        if (!path.isEmpty()) {
-            scripting.call(QStringLiteral("loadScript"), path, QStringLiteral("nemacscrolling"));
-            scripting.call(QStringLiteral("start"));
-        }
+        if (!path.isEmpty())
+            loadScriptWhenReady(scripting, path, QStringLiteral("nemacscrolling"));
     }
+
+    scripting.call(QStringLiteral("start"));
 
     QDBusInterface kwin(QStringLiteral("org.kde.KWin"),
                           QStringLiteral("/KWin"),
