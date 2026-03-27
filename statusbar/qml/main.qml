@@ -304,15 +304,27 @@ Item {
                     width: rootItem.iconSize
                     height: width
                     sourceSize: Qt.size(width, height)
-                    source: activeConnection.wirelessIcon ? "qrc:/images/" + (rootItem.darkMode ? "dark/" : "light/") + activeConnection.wirelessIcon + ".svg" : ""
+                    
+                    // Плавное формирование пути
+                    source: {
+                        if (!activeConnection.wirelessIcon) return ""
+                        let theme = rootItem.darkMode ? "dark/" : "light/"
+                        return "qrc:/images/" + theme + activeConnection.wirelessIcon + ".svg"
+                    }
+                    
                     asynchronous: true
                     Layout.alignment: Qt.AlignCenter
-                    visible: enabledConnections.wirelessHwEnabled &&
-                             enabledConnections.wirelessEnabled &&
-                             activeConnection.wirelessName &&
-                             wirelessIcon.status === Image.Ready
+                    
+                    // Смягчаем условия видимости
+                    visible: (enabledConnections.wirelessEnabled || enabledConnections.wirelessHwEnabled) && 
+                             activeConnection.wirelessIcon !== "" 
+                             
                     antialiasing: true
                     smooth: false
+                    
+                    // Добавим анимацию появления, чтобы иконка не "прыгала" резко
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
                 }
 
                 // Battery Item
