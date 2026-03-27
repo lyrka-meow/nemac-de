@@ -9,47 +9,59 @@ Item {
     id: control
     clip: false
 
-    readonly property int contentMargin: 20
+    readonly property int contentMargin: 22
     implicitHeight: visible ? (mainColumn.implicitHeight + contentMargin * 2) : 0
     
-    // Данные MPRIS
     property bool isPlaying: mprisManager.playbackStatus === Mpris.Playing
-    property var metadata: mprisManager.metadata
-    property string artUrl: metadata[Mpris.metadataToString(Mpris.ArtUrl)] || ""
-    property string title: metadata[Mpris.metadataToString(Mpris.Title)] || "No Media Playing"
-    property string artist: metadata[Mpris.metadataToString(Mpris.Artist)] || "Unknown Artist"
     
-    property real trackLengthUs: {
-        let len = metadata[Mpris.metadataToString(Mpris.Length)]
-        return len > 0 ? Number(len) : 1
-    }
+    // Реактивные свойства для метаданных
+    property string artUrl: ""
+    property string title: ""
+    property string artist: ""
 
     MprisManager {
         id: mprisManager
-        onMetadataChanged: control.visible = (title !== "" || artist !== "")
+        
+        // Слушаем изменения метаданных напрямую (фикс обложки)
+        onMetadataChanged: {
+            var meta = mprisManager.metadata
+            var newArt = meta[Mpris.metadataToString(Mpris.ArtUrl)] || ""
+            var newTitle = meta[Mpris.metadataToString(Mpris.Title)] || ""
+            var newArtist = meta[Mpris.metadataToString(Mpris.Artist)] || ""
+            
+            // Если данные изменились - обновляем
+            control.artUrl = newArt
+            control.title = newTitle
+            control.artist = newArtist
+            
+            control.visible = (newTitle !== "" || newArtist !== "")
+        }
     }
 
-    // Постоянное обновление позиции (чтобы прогресс не стоял на месте)
+    // Таймер прогресса (фикс отображения)
     Timer {
         interval: 500
         running: control.visible && control.isPlaying
         repeat: true
-        onTriggered: seekSlider.value = mprisManager.position
+        onTriggered: {
+            if (!seekSlider.pressed)
+                seekSlider.value = mprisManager.position
+        }
     }
 
-    // --- ФОНОВАЯ ПАНЕЛЬ (Liquid Glass) ---
+    // --- ФОН Liquid Glass ---
     Rectangle {
         id: panelBg
         anchors.fill: parent
-        radius: 24
-        color: NemacUI.Theme.darkMode ? Qt.rgba(0.1, 0.1, 0.12, 0.7) : Qt.rgba(1, 1, 1, 0.6)
+        radius: 28
+        color: NemacUI.Theme.darkMode ? Qt.rgba(0.08, 0.08, 0.1, 0.75) : Qt.rgba(1, 1, 1, 0.65)
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.1)
+        border.color: Qt.rgba(1, 1, 1, 0.15)
 
-        // Мягкое свечение снизу (эффект глубины)
+        // Динамический градиент (теперь полностью системный цвет)
         LinearGradient {
             anchors.fill: parent
-            opacity: 0.3
+            opacity: 0.25
             source: parent
             start: Qt.point(0, 0)
             end: Qt.point(0, parent.height)
@@ -64,84 +76,87 @@ Item {
         id: mainColumn
         anchors.fill: parent
         anchors.margins: contentMargin
-        spacing: 15
+        spacing: 18
 
-        // --- БЛОК 1: ОБЛОЖКА ---
+        // --- ОБЛОЖКА ---
         Item {
             Layout.alignment: Qt.AlignHCenter
-            width: 180; height: 180
+            width: 190; height: 190
 
-            // Тень под обложкой
             DropShadow {
                 anchors.fill: coverContainer
-                radius: 20
+                radius: 18
                 samples: 25
-                color: Qt.rgba(0, 0, 0, 0.4)
+                color: Qt.rgba(0, 0, 0, 0.45)
                 source: coverContainer
             }
 
             Rectangle {
                 id: coverContainer
                 anchors.fill: parent
-                radius: 20
+                radius: 22
                 clip: true
-                color: "#222"
+                color: "#1a1a1a"
 
                 Image {
                     id: albumArt
                     anchors.fill: parent
-                    source: control.artUrl || "qrc:/images/media-cover.svg"
+                    // Добавляем проверку на пустую строку и "image://" префиксы
+                    source: control.artUrl ? (control.artUrl.indexOf("file://") === 0 ? control.artUrl : control.artUrl) : "qrc:/images/media-cover.svg"
                     fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
                     
-                    // Плавная анимация смены картинки
+                    // Плавная смена (фикс визуального бага)
                     Behavior on source { 
-                        NumberAnimation { duration: 300 } 
+                        SequentialAnimation {
+                            NumberAnimation { target: albumArt; property: "opacity"; to: 0.5; duration: 100 }
+                            PropertyAction { target: albumArt; property: "opacity"; value: 1.0 }
+                        }
                     }
                 }
             }
         }
 
-        // --- БЛОК 2: ТЕКСТ (Центрирование и Иерархия) ---
+        // --- ТЕКСТ ---
         Column {
             Layout.fillWidth: true
             spacing: 4
             Label {
-                text: control.title
+                text: control.title || "Unknown Track"
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 20
-                font.weight: Font.DemiBold
+                font.pixelSize: 22
+                font.weight: Font.Bold
                 color: NemacUI.Theme.textColor
                 elide: Text.ElideRight
             }
             Label {
-                text: control.artist
+                text: control.artist || "Unknown Artist"
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 14
-                opacity: 0.6
+                font.pixelSize: 15
+                opacity: 0.7
                 color: NemacUI.Theme.textColor
                 elide: Text.ElideRight
             }
         }
 
-        // --- БЛОК 3: PROGRESS BAR (Liquid Style) ---
+        // --- ПРОГРЕСС (Liquid) ---
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 5
+            spacing: 6
 
             Slider {
                 id: seekSlider
                 Layout.fillWidth: true
                 from: 0
-                to: control.trackLengthUs
+                to: mprisManager.metadata[Mpris.metadataToString(Mpris.Length)] || 1
                 value: mprisManager.position
 
                 background: Rectangle {
                     x: seekSlider.leftPadding
                     y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 200
-                    implicitHeight: 8 // Толще для стиля Liquid
+                    implicitHeight: 8
                     width: seekSlider.availableWidth
                     height: implicitHeight
                     radius: 4
@@ -153,13 +168,10 @@ Item {
                         radius: 4
                         color: NemacUI.Theme.highlightColor
                         
-                        // Свечение активной части
                         layer.enabled: true
                         layer.effect: Glow {
-                            radius: 8
-                            samples: 15
+                            radius: 6; samples: 12
                             color: NemacUI.Theme.highlightColor
-                            spread: 0.2
                         }
                     }
                 }
@@ -167,59 +179,55 @@ Item {
                 handle: Rectangle {
                     x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
                     y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 16
-                    implicitHeight: 16
-                    radius: 8
+                    implicitWidth: 16; implicitHeight: 16; radius: 8
                     color: "white"
                     border.color: NemacUI.Theme.highlightColor
                     border.width: 3
-                    visible: seekSlider.hovered || seekSlider.pressed
+                    scale: seekSlider.pressed ? 1.2 : 1.0
+                    Behavior on scale { NumberAnimation { duration: 100 } }
                 }
 
                 onMoved: mprisManager.setPosition(Math.round(value))
             }
 
-            // Тайминги
             RowLayout {
                 Layout.fillWidth: true
-                Label { 
-                    text: formatTime(seekSlider.value)
-                    font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor 
-                }
+                Label { text: formatTime(seekSlider.value); font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor }
                 Item { Layout.fillWidth: true }
-                Label { 
-                    text: formatTime(control.trackLengthUs)
-                    font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor 
-                }
+                Label { text: formatTime(seekSlider.to); font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor }
             }
         }
 
-        // --- БЛОК 4: УПРАВЛЕНИЕ ---
+        // --- КНОПКИ УПРАВЛЕНИЯ ---
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 30
+            spacing: 40
 
             IconButton {
-                implicitWidth: 36; implicitHeight: 36
-                source: "qrc:/images/dark/media-skip-backward-symbolic.svg"
+                implicitWidth: 38; implicitHeight: 38
+                source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-backward-symbolic.svg"
                 onLeftButtonClicked: mprisManager.previous()
             }
 
-            // Play/Pause - Главная кнопка
+            // Кнопка Play/Pause (ФИКС ТЕНИ)
             Rectangle {
-                width: 58; height: 58
-                radius: 29
+                id: playBtn
+                width: 64; height: 64
+                radius: 32
                 color: NemacUI.Theme.highlightColor
                 
+                // Тень теперь использует правильный системный цвет (rgba фикс)
                 layer.enabled: true
                 layer.effect: DropShadow {
-                    radius: 12; samples: 20; verticalOffset: 4
-                    color: Qt.rgba(NemacUI.Theme.highlightColor.r, 0, 0, 0.3)
+                    radius: 14; samples: 25; verticalOffset: 5
+                    color: Qt.rgba(NemacUI.Theme.highlightColor.r, 
+                                   NemacUI.Theme.highlightColor.g, 
+                                   NemacUI.Theme.highlightColor.b, 0.4) 
                 }
 
                 Image {
                     anchors.centerIn: parent
-                    width: 26; height: 26
+                    width: 28; height: 28
                     source: control.isPlaying ? "qrc:/images/dark/media-playback-pause-symbolic.svg" 
                                               : "qrc:/images/dark/media-playback-start-symbolic.svg"
                 }
@@ -227,15 +235,15 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: mprisManager.playPause()
-                    onPressed: parent.scale = 0.9
-                    onReleased: parent.scale = 1.0
+                    onPressed: playBtn.scale = 0.92
+                    onReleased: playBtn.scale = 1.0
                 }
-                Behavior on scale { NumberAnimation { duration: 100 } }
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
             }
 
             IconButton {
-                implicitWidth: 36; implicitHeight: 36
-                source: "qrc:/images/dark/media-skip-forward-symbolic.svg"
+                implicitWidth: 38; implicitHeight: 38
+                source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-forward-symbolic.svg"
                 onLeftButtonClicked: mprisManager.next()
             }
         }
