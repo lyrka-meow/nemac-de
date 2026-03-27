@@ -1,9 +1,6 @@
 /*
- * Copyright (C) 2021 NemacDE Team.
- *
- * Author:     Reion Wong <reionwong@gmail.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * Updated MprisItem.qml
+ * Focus: Premium UI, Smooth Animations, Dynamic Visuals
  */
 
 import QtQuick 2.12
@@ -15,81 +12,34 @@ import Nemac.Mpris 1.0
 
 Item {
     id: control
-
     clip: true
 
-    readonly property int contentMargin: Math.round(NemacUI.Units.largeSpacing * 1.25)
-
-    implicitHeight: visible ? (mainColumn.implicitHeight + 2 * contentMargin) : 0
-    height: implicitHeight
-
+    readonly property int contentMargin: NemacUI.Units.largeSpacing * 1.5
+    implicitHeight: visible ? (mainLayout.implicitHeight + contentMargin * 2) : 0
+    
+    // Состояния плеера
     property bool available: mprisManager.availableServices.length > 0
     property bool isPlaying: currentService && mprisManager.playbackStatus === Mpris.Playing
     property alias currentService: mprisManager.currentService
-    property var artUrlTag: Mpris.metadataToString(Mpris.ArtUrl)
-    property var titleTag: Mpris.metadataToString(Mpris.Title)
-    property var artistTag: Mpris.metadataToString(Mpris.Artist)
-    property var albumTag: Mpris.metadataToString(Mpris.Album)
-    property var lengthTag: Mpris.metadataToString(Mpris.Length)
-    property real wavePhase: 0.0
-
+    
+    // Теги метаданных
+    property var metadata: mprisManager.metadata
+    property string artUrl: metadata[Mpris.metadataToString(Mpris.ArtUrl)] || ""
+    property string title: metadata[Mpris.metadataToString(Mpris.Title)] || "Unknown Title"
+    property string artist: metadata[Mpris.metadataToString(Mpris.Artist)] || "Unknown Artist"
+    
     property real trackLengthUs: {
-        if (lengthTag in mprisManager.metadata)
-            return Math.max(1, Number(mprisManager.metadata[lengthTag]))
-        return 1
+        let len = metadata[Mpris.metadataToString(Mpris.Length)]
+        return len > 0 ? Number(len) : 1
     }
 
     MprisManager {
         id: mprisManager
-
-        onCurrentServiceChanged: control.updateInfo()
-        onMetadataChanged: control.updateInfo()
-        onPositionChanged: {
-            if (!seekSlider.pressed)
-                seekSlider.value = mprisManager.position
-        }
+        onMetadataChanged: control.updateVisibility()
     }
 
-    Timer {
-        id: positionTimer
-        interval: 500
-        repeat: true
-        running: control.visible && control.isPlaying
-        onTriggered: {
-            if (!seekSlider.pressed && mprisManager.position >= 0)
-                seekSlider.value = mprisManager.position
-        }
-    }
-
-    Timer {
-        id: waveTimer
-        interval: 16
-        repeat: true
-        running: control.visible
-        onTriggered: {
-            if (control.isPlaying)
-                control.wavePhase += 0.18
-            else
-                control.wavePhase += 0.04
-
-            waveCanvas.requestPaint()
-        }
-    }
-
-    Component.onCompleted: control.updateInfo()
-
-    function updateInfo() {
-        var titleAvailable = (titleTag in mprisManager.metadata) ? mprisManager.metadata[titleTag].toString() !== "" : false
-        var artistAvailable = (artistTag in mprisManager.metadata) ? mprisManager.metadata[artistTag].toString() !== "" : false
-
-        control.visible = titleAvailable || artistAvailable
-        _songLabel.text = titleAvailable ? mprisManager.metadata[titleTag].toString() : ""
-        _artistLabel.text = artistAvailable ? mprisManager.metadata[artistTag].toString() : ""
-        _albumLabel.text = (albumTag in mprisManager.metadata) ? mprisManager.metadata[albumTag].toString() : ""
-        artImage.source = (artUrlTag in mprisManager.metadata) ? mprisManager.metadata[artUrlTag].toString() : ""
-
-        seekSlider.to = Math.max(control.trackLengthUs, 1)
-        seekSlider.value = mprisManager.position >= 0 ? mprisManager.position : 0
+    function updateVisibility() {
+        control.visible = (title !== "" || artist !== "")
     }
 
     function formatTime(us) {
@@ -99,319 +49,219 @@ Item {
         return m + ":" + (s < 10 ? "0" : "") + s
     }
 
+    // --- ФОНОВАЯ КАРТОЧКА ---
     Rectangle {
+        id: cardBase
         anchors.fill: parent
-        color: "white"
         radius: NemacUI.Theme.bigRadius
-        opacity: NemacUI.Theme.darkMode ? 0.2 : 0.7
+        color: NemacUI.Theme.darkMode ? Qt.rgba(0.15, 0.15, 0.18, 0.8) : Qt.rgba(1, 1, 1, 0.9)
+        border.color: Qt.rgba(1, 1, 1, 0.1)
+        border.width: 1
+
+        // Размытый фон из обложки (создает эффект глубины)
+        Image {
+            id: blurredArt
+            anchors.fill: parent
+            source: control.artUrl
+            fillMode: Image.PreserveAspectCrop
+            opacity: 0.15
+            visible: status === Image.Ready
+            layer.enabled: true
+            layer.effect: FastBlur {
+                radius: 64
+                transparentBorder: true
+            }
+        }
     }
 
     ColumnLayout {
-        id: mainColumn
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
+        id: mainLayout
+        anchors.fill: parent
         anchors.margins: contentMargin
-        width: parent.width
         spacing: NemacUI.Units.largeSpacing
 
-        ColumnLayout {
-            id: artColumn
+        // --- ВЕРХНИЙ БЛОК: ОБЛОЖКА И ИНФО ---
+        RowLayout {
             Layout.fillWidth: true
-            spacing: NemacUI.Units.largeSpacing
+            spacing: NemacUI.Units.largeSpacing * 1.5
 
+            // Обложка с мягкой тенью
             Item {
-                Layout.alignment: Qt.AlignHCenter
-                width: 148
-                height: 148
-
-                Item {
-                    anchors.fill: parent
-                    visible: control.isPlaying
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 140
-                        height: 140
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 2
-                        border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
-                                              NemacUI.Theme.highlightColor.g,
-                                              NemacUI.Theme.highlightColor.b, 0.30)
-                        opacity: 0.0
-
-                        SequentialAnimation on scale {
-                            running: control.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 1.0; to: 1.18; duration: 1400; easing.type: Easing.OutQuad }
-                        }
-
-                        SequentialAnimation on opacity {
-                            running: control.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 0.35; to: 0.05; duration: 1400; easing.type: Easing.OutQuad }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 140
-                        height: 140
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 2
-                        border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
-                                              NemacUI.Theme.highlightColor.g,
-                                              NemacUI.Theme.highlightColor.b, 0.22)
-                        opacity: 0.0
-
-                        SequentialAnimation on scale {
-                            running: control.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 1.0; to: 1.28; duration: 1900; easing.type: Easing.OutQuad }
-                        }
-
-                        SequentialAnimation on opacity {
-                            running: control.isPlaying
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 0.26; to: 0.02; duration: 1900; easing.type: Easing.OutQuad }
-                        }
-                    }
+                width: 100; height: 100
+                
+                DropShadow {
+                    anchors.fill: artContainer
+                    horizontalOffset: 0; verticalOffset: 6
+                    radius: 12; samples: 25
+                    color: Qt.rgba(0, 0, 0, 0.3)
+                    source: artContainer
                 }
 
                 Rectangle {
-                    id: artCircle
-                    anchors.centerIn: parent
-                    width: 140
-                    height: 140
-                    radius: width / 2
+                    id: artContainer
+                    anchors.fill: parent
+                    radius: NemacUI.Theme.smallRadius
                     color: NemacUI.Theme.darkMode ? "#2a2a2e" : "#e8e8ec"
-                    border.width: 2
-                    border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
-                                          NemacUI.Theme.highlightColor.g,
-                                          NemacUI.Theme.highlightColor.b, 0.55)
 
                     Image {
-                        id: defaultImage
+                        id: mainArt
                         anchors.fill: parent
-                        anchors.margins: 4
-                        source: "qrc:/images/media-cover.svg"
-                        sourceSize: Qt.size(width, height)
-                        visible: !artImage.visible
-                        fillMode: Image.Pad
-                    }
-
-                    Image {
-                        id: artImage
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        visible: status === Image.Ready
+                        source: control.artUrl || "qrc:/images/media-cover.svg"
                         fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
                         layer.enabled: true
                         layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: artImage.width
-                                height: artImage.height
-                                radius: width / 2
+                            maskSource: Rectangle { width: 100; height: 100; radius: 10 }
+                        }
+                        
+                        // Плавная смена обложки
+                        Behavior on source { 
+                            SequentialAnimation {
+                                NumberAnimation { target: mainArt; property: "opacity"; to: 0; duration: 150 }
+                                PropertyAction { }
+                                NumberAnimation { target: mainArt; property: "opacity"; to: 1; duration: 250 }
                             }
                         }
                     }
                 }
             }
 
-            Label {
-                id: _songLabel
+            // Текстовый блок
+            ColumnLayout {
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                font.pointSize: 13
-                font.bold: true
-                font.capitalization: Font.AllUppercase
-                elide: Text.ElideMiddle
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                color: NemacUI.Theme.textColor
-            }
+                spacing: 4
 
-            Label {
-                id: _artistLabel
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                font.pointSize: 11
-                elide: Text.ElideMiddle
-                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.8)
-            }
+                Label {
+                    text: control.title
+                    font.pixelSize: 18
+                    font.bold: true
+                    color: NemacUI.Theme.textColor
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
+                    wrapMode: Text.WordWrap
+                }
 
-            Label {
-                id: _albumLabel
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                font.pointSize: 9
-                font.capitalization: Font.AllUppercase
-                elide: Text.ElideMiddle
-                visible: text.length > 0
-                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
+                Label {
+                    text: control.artist
+                    font.pixelSize: 14
+                    opacity: 0.7
+                    color: NemacUI.Theme.textColor
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
             }
         }
 
-        RowLayout {
+        // --- БЛОК ПРОГРЕССА ---
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: NemacUI.Units.smallSpacing
+            spacing: 2
 
-            Label {
-                text: formatTime(seekSlider.value)
-                font.pointSize: 9
-                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
-                Layout.preferredWidth: 40
-            }
-
-            Item {
+            Slider {
+                id: seekSlider
                 Layout.fillWidth: true
-                implicitHeight: 26
+                from: 0
+                to: control.trackLengthUs
+                value: mprisManager.position
+                
+                // Кастомный стиль слайдера (тонкий и изящный)
+                background: Rectangle {
+                    x: seekSlider.leftPadding
+                    y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+                    implicitWidth: 200
+                    implicitHeight: 4
+                    width: seekSlider.availableWidth
+                    height: implicitHeight
+                    radius: 2
+                    color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.1)
 
-                Canvas {
-                    id: waveCanvas
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 16
-                    opacity: 0.9
-                    antialiasing: true
-
-                    Connections {
-                        target: seekSlider
-                        function onValueChanged() { waveCanvas.requestPaint() }
-                        function onToChanged() { waveCanvas.requestPaint() }
-                        function onPressedChanged() { waveCanvas.requestPaint() }
-                    }
-
-                    onWidthChanged: requestPaint()
-                    onHeightChanged: requestPaint()
-
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.reset()
-
-                        var w = width
-                        var h = height
-                        if (w <= 1 || h <= 1)
-                            return
-
-                        var mid = h / 2
-                        var progress = seekSlider.to > 0 ? Math.max(0, Math.min(1, seekSlider.value / seekSlider.to)) : 0
-                        var progX = w * progress
-
-                        var baseR = NemacUI.Theme.highlightColor.r
-                        var baseG = NemacUI.Theme.highlightColor.g
-                        var baseB = NemacUI.Theme.highlightColor.b
-
-                        ctx.lineWidth = 2
-                        ctx.strokeStyle = "rgba(" + Math.round(baseR * 255) + "," + Math.round(baseG * 255) + "," + Math.round(baseB * 255) + ",0.22)"
-                        ctx.beginPath()
-                        ctx.moveTo(0, mid)
-                        ctx.lineTo(w, mid)
-                        ctx.stroke()
-
-                        if (progX < 2)
-                            return
-
-                        var amp = control.isPlaying ? 2.4 : 1.1
-                        var wavelength = 22
-
-                        ctx.strokeStyle = "rgba(" + Math.round(baseR * 255) + "," + Math.round(baseG * 255) + "," + Math.round(baseB * 255) + ",0.92)"
-                        ctx.beginPath()
-                        for (var x = 0; x <= progX; x += 1) {
-                            var y = mid + Math.sin((x / wavelength) * 2 * Math.PI + control.wavePhase) * amp
-                            if (x === 0)
-                                ctx.moveTo(x, y)
-                            else
-                                ctx.lineTo(x, y)
-                        }
-                        ctx.stroke()
+                    Rectangle {
+                        width: seekSlider.visualPosition * parent.width
+                        height: parent.height
+                        color: NemacUI.Theme.highlightColor
+                        radius: 2
                     }
                 }
 
-                Slider {
-                    id: seekSlider
-                    anchors.fill: parent
-                    from: 0
-                    to: Math.max(control.trackLengthUs, 1)
-                    stepSize: Math.max(1, Math.max(control.trackLengthUs, 1) / 400)
-
-                    palette.mid: NemacUI.Theme.darkMode ? "#3a3a42" : "#d0d0d8"
-                    palette.highlight: NemacUI.Theme.highlightColor
-
-                    onPressedChanged: {
-                        waveCanvas.requestPaint()
-                        if (!pressed)
-                            mprisManager.setPosition(Math.round(value))
-                    }
+                handle: Rectangle {
+                    x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
+                    y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+                    implicitWidth: 12
+                    implicitHeight: 12
+                    radius: 6
+                    color: "white"
+                    border.color: NemacUI.Theme.highlightColor
+                    border.width: 2
+                    scale: seekSlider.pressed ? 1.3 : (seekSlider.hovered ? 1.1 : 0) // Появляется только при наведении
+                    Behavior on scale { NumberAnimation { duration: 150 } }
                 }
+
+                onMoved: mprisManager.setPosition(Math.round(value))
             }
 
-            Label {
-                text: formatTime(control.trackLengthUs)
-                font.pointSize: 9
-                color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.7)
-                Layout.preferredWidth: 40
-                horizontalAlignment: Text.AlignRight
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: formatTime(seekSlider.value)
+                    font.pixelSize: 10; opacity: 0.5
+                    color: NemacUI.Theme.textColor
+                }
+                Item { Layout.fillWidth: true }
+                Label {
+                    text: formatTime(control.trackLengthUs)
+                    font.pixelSize: 10; opacity: 0.5
+                    color: NemacUI.Theme.textColor
+                }
             }
         }
 
+        // --- УПРАВЛЕНИЕ ---
         RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 64
             Layout.alignment: Qt.AlignHCenter
-            spacing: NemacUI.Units.largeSpacing * 1.5
+            spacing: NemacUI.Units.largeSpacing * 2
 
             IconButton {
-                width: 40
-                height: 40
+                implicitWidth: 32; implicitHeight: 32
                 source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-backward-symbolic.svg"
-                onLeftButtonClicked: if (mprisManager.canGoPrevious) mprisManager.previous()
-                visible: mprisManager.canGoPrevious
+                onLeftButtonClicked: mprisManager.previous()
+                opacity: mprisManager.canGoPrevious ? 1 : 0.3
             }
 
+            // Центральная кнопка Play/Pause
             Rectangle {
-                width: 56
-                height: 56
-                radius: 28
+                width: 52; height: 52
+                radius: 26
                 color: NemacUI.Theme.highlightColor
-                visible: mprisManager.canPause || mprisManager.canPlay
-
-                Image {
-                    id: playPauseIcon
-                    anchors.centerIn: parent
-                    width: 28
-                    height: 28
-                    sourceSize: Qt.size(width, height)
-                    source: control.isPlaying ? "qrc:/images/dark/media-playback-pause-symbolic.svg"
-                                              : "qrc:/images/dark/media-playback-start-symbolic.svg"
-                    smooth: false
+                
+                layer.enabled: true
+                layer.effect: DropShadow {
+                    radius: 8; samples: 17; color: Qt.rgba(NemacUI.Theme.highlightColor.r, 0, 0, 0.4)
+                    verticalOffset: 4
                 }
 
-                ColorOverlay {
-                    anchors.fill: playPauseIcon
-                    source: playPauseIcon
-                    color: "#ffffff"
+                Image {
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: control.isPlaying ? 0 : 2 // Визуальная центровка иконки Play
+                    width: 24; height: 24
+                    source: control.isPlaying ? "qrc:/images/dark/media-playback-pause-symbolic.svg" 
+                                              : "qrc:/images/dark/media-playback-start-symbolic.svg"
                 }
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
-                        if ((control.isPlaying && mprisManager.canPause) || (!control.isPlaying && mprisManager.canPlay))
-                            mprisManager.playPause()
-                    }
+                    onClicked: mprisManager.playPause()
+                    onPressed: parent.scale = 0.9
+                    onReleased: parent.scale = 1.0
                 }
+                
+                Behavior on scale { NumberAnimation { duration: 100 } }
             }
 
             IconButton {
-                width: 40
-                height: 40
+                implicitWidth: 32; implicitHeight: 32
                 source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-forward-symbolic.svg"
-                onLeftButtonClicked: if (mprisManager.canGoNext) mprisManager.next()
-                visible: mprisManager.canGoNext
+                onLeftButtonClicked: mprisManager.next()
+                opacity: mprisManager.canGoNext ? 1 : 0.3
             }
         }
     }
