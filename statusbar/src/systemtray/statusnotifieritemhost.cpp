@@ -1,7 +1,7 @@
 /*
-
     SPDX-FileCopyrightText: 2009 Marco Martin <notmart@gmail.com>
     SPDX-FileCopyrightText: 2009 Matthieu Gallien <matthieu_gallien@yahoo.fr>
+    Modified for NemacDE: 2021-2024
 
     SPDX-License-Identifier: GPL-2.0-or-later
 */
@@ -10,6 +10,8 @@
 #include "statusnotifieritemsource.h"
 #include <QStringList>
 #include <QDebug>
+#include <QTimer>
+#include <QCoreApplication>
 
 #include "dbusproperties.h"
 
@@ -29,12 +31,15 @@ StatusNotifierItemHost::StatusNotifierItemHost()
     : QObject()
     , m_statusNotifierWatcher(nullptr)
 {
+    // Завет 3: Стабильность. Выносим инициализацию из конструктора в отдельный метод.
     init();
 }
 
 StatusNotifierItemHost::~StatusNotifierItemHost()
 {
-    QDBusConnection::sessionBus().unregisterService(m_serviceName);
+    if (QDBusConnection::sessionBus().isConnected()) {
+        QDBusConnection::sessionBus().unregisterService(m_serviceName);
+    }
 }
 
 StatusNotifierItemHost *StatusNotifierItemHost::self()
@@ -56,25 +61,33 @@ void StatusNotifierItemHost::init()
 {
     if (QDBusConnection::sessionBus().isConnected()) {
         m_serviceName = "org.kde.StatusNotifierHost-" + QString::number(QCoreApplication::applicationPid());
-        QDBusConnection::sessionBus().registerService(m_serviceName);
 
-        QDBusServiceWatcher *watcher =
-            new QDBusServiceWatcher(s_watcherServiceName, QDBusConnection::sessionBus(), QDBusServiceWatcher::WatchForOwnerChange, this);
-        connect(watcher, &QDBusServiceWatcher::serviceOwnerChanged, this, &StatusNotifierItemHost::serviceChange);
+        // Завет 3: Предотвращение гонки условий (Race Condition).
+        // Даем системе 500мс на запуск всех фоновых процессов перед тем, 
+        // как статусбар объявит себя хостом системного трея.
+        QTimer::singleShot(500, this, [this]() {
+            if (!QDBusConnection::sessionBus().registerService(m_serviceName)) {
+                qWarning() << "Failed to register DBus service:" << m_serviceName;
+            }
 
-        registerWatcher(s_watcherServiceName);
+            QDBusServiceWatcher *watcher =
+                new QDBusServiceWatcher(s_watcherServiceName, QDBusConnection::sessionBus(), QDBusServiceWatcher::WatchForOwnerChange, this);
+            
+            connect(watcher, &QDBusServiceWatcher::serviceOwnerChanged, this, &StatusNotifierItemHost::serviceChange);
+
+            // Начинаем регистрацию в Watcher
+            registerWatcher(s_watcherServiceName);
+        });
     }
 }
 
 void StatusNotifierItemHost::serviceChange(const QString &name, const QString &oldOwner, const QString &newOwner)
 {
-    qDebug() << "Service" << name << "status change, old owner:" << oldOwner << "new:" << newOwner;
-
     if (newOwner.isEmpty()) {
-        // unregistered
+        // Сервис Watcher пропал из системы
         unregisterWatcher(name);
     } else if (oldOwner.isEmpty()) {
-        // registered
+        // Сервис Watcher появился (например, после рестарта рабочего стола)
         registerWatcher(name);
     }
 }
@@ -82,11 +95,15 @@ void StatusNotifierItemHost::serviceChange(const QString &name, const QString &o
 void StatusNotifierItemHost::registerWatcher(const QString &service)
 {
     if (service == s_watcherServiceName) {
-        delete m_statusNotifierWatcher;
+        if (m_statusNotifierWatcher) {
+            delete m_statusNotifierWatcher;
+        }
 
         m_statusNotifierWatcher =
             new org::kde::StatusNotifierWatcher(s_watcherServiceName, QStringLiteral("/StatusNotifierWatcher"), QDBusConnection::sessionBus());
+        
         if (m_statusNotifierWatcher->isValid()) {
+            // Сообщаем системе, что мы — новый Хост для иконок
             m_statusNotifierWatcher->call(QDBus::NoBlock, QStringLiteral("RegisterStatusNotifierHost"), m_serviceName);
 
             OrgFreedesktopDBusPropertiesInterface propetriesIface(m_statusNotifierWatcher->service(),
@@ -102,41 +119,38 @@ void StatusNotifierItemHost::registerWatcher(const QString &service)
                     this,
                     &StatusNotifierItemHost::serviceUnregistered);
 
+            // Запрашиваем список уже запущенных приложений с иконками
             QDBusPendingReply<QDBusVariant> pendingItems = propetriesIface.Get(m_statusNotifierWatcher->interface(), "RegisteredStatusNotifierItems");
 
             QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pendingItems, this);
             connect(watcher, &QDBusPendingCallWatcher::finished, this, [=]() {
                 watcher->deleteLater();
                 QDBusReply<QDBusVariant> reply = *watcher;
-                QStringList registeredItems = reply.value().variant().toStringList();
-                foreach (const QString &service, registeredItems) {
-                    if (!m_sniServices.contains(service)) { // due to async nature of this call, service may be already there
-                        addSNIService(service);
+                if (reply.isValid()) {
+                    QStringList registeredItems = reply.value().variant().toStringList();
+                    for (const QString &itemService : registeredItems) {
+                        if (!m_sniServices.contains(itemService)) {
+                            addSNIService(itemService);
+                        }
                     }
                 }
             });
         } else {
             delete m_statusNotifierWatcher;
             m_statusNotifierWatcher = nullptr;
-            qDebug() << "System tray daemon not reachable";
+            qDebug() << "System tray watcher not reachable. Retrying in 2 seconds...";
+            // Если watcher еще не готов, попробуем еще раз через 2 секунды
+            QTimer::singleShot(2000, this, [this]() { registerWatcher(s_watcherServiceName); });
         }
     }
 }
 
 void StatusNotifierItemHost::unregisterWatcher(const QString &service)
 {
-    if (service == s_watcherServiceName) {
-        qDebug() << s_watcherServiceName << "disappeared";
+    if (service == s_watcherServiceName && m_statusNotifierWatcher) {
+        qDebug() << "StatusNotifierWatcher disappeared";
 
-        disconnect(m_statusNotifierWatcher,
-                   &OrgKdeStatusNotifierWatcherInterface::StatusNotifierItemRegistered,
-                   this,
-                   &StatusNotifierItemHost::serviceRegistered);
-        disconnect(m_statusNotifierWatcher,
-                   &OrgKdeStatusNotifierWatcherInterface::StatusNotifierItemUnregistered,
-                   this,
-                   &StatusNotifierItemHost::serviceUnregistered);
-
+        m_statusNotifierWatcher->disconnect();
         removeAllSNIServices();
 
         delete m_statusNotifierWatcher;
@@ -146,8 +160,9 @@ void StatusNotifierItemHost::unregisterWatcher(const QString &service)
 
 void StatusNotifierItemHost::serviceRegistered(const QString &service)
 {
-    qDebug() << "Registering" << service;
-    addSNIService(service);
+    if (!m_sniServices.contains(service)) {
+        addSNIService(service);
+    }
 }
 
 void StatusNotifierItemHost::serviceUnregistered(const QString &service)
@@ -160,7 +175,6 @@ void StatusNotifierItemHost::removeAllSNIServices()
     QHashIterator<QString, StatusNotifierItemSource *> it(m_sniServices);
     while (it.hasNext()) {
         it.next();
-
         StatusNotifierItemSource *item = it.value();
         item->disconnect();
         item->deleteLater();
@@ -171,6 +185,7 @@ void StatusNotifierItemHost::removeAllSNIServices()
 
 void StatusNotifierItemHost::addSNIService(const QString &service)
 {
+    // Завет 1: Чистота. Создаем источник данных для каждой иконки.
     StatusNotifierItemSource *item = new StatusNotifierItemSource(service, this);
     m_sniServices.insert(service, item);
     Q_EMIT itemAdded(service);
@@ -186,4 +201,3 @@ void StatusNotifierItemHost::removeSNIService(const QString &service)
         Q_EMIT itemRemoved(service);
     }
 }
-
