@@ -31,6 +31,7 @@ Item {
     property var artistTag: Mpris.metadataToString(Mpris.Artist)
     property var albumTag: Mpris.metadataToString(Mpris.Album)
     property var lengthTag: Mpris.metadataToString(Mpris.Length)
+    property real wavePhase: 0.0
 
     property real trackLengthUs: {
         if (lengthTag in mprisManager.metadata)
@@ -57,6 +58,21 @@ Item {
         onTriggered: {
             if (!seekSlider.pressed && mprisManager.position >= 0)
                 seekSlider.value = mprisManager.position
+        }
+    }
+
+    Timer {
+        id: waveTimer
+        interval: 16
+        repeat: true
+        running: control.visible
+        onTriggered: {
+            if (control.isPlaying)
+                control.wavePhase += 0.18
+            else
+                control.wavePhase += 0.04
+
+            waveCanvas.requestPaint()
         }
     }
 
@@ -108,6 +124,61 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 width: 148
                 height: 148
+
+                Item {
+                    anchors.fill: parent
+                    visible: control.isPlaying
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 140
+                        height: 140
+                        radius: width / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
+                                              NemacUI.Theme.highlightColor.g,
+                                              NemacUI.Theme.highlightColor.b, 0.30)
+                        opacity: 0.0
+
+                        SequentialAnimation on scale {
+                            running: control.isPlaying
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 1.0; to: 1.18; duration: 1400; easing.type: Easing.OutQuad }
+                        }
+
+                        SequentialAnimation on opacity {
+                            running: control.isPlaying
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0.35; to: 0.05; duration: 1400; easing.type: Easing.OutQuad }
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 140
+                        height: 140
+                        radius: width / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Qt.rgba(NemacUI.Theme.highlightColor.r,
+                                              NemacUI.Theme.highlightColor.g,
+                                              NemacUI.Theme.highlightColor.b, 0.22)
+                        opacity: 0.0
+
+                        SequentialAnimation on scale {
+                            running: control.isPlaying
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 1.0; to: 1.28; duration: 1900; easing.type: Easing.OutQuad }
+                        }
+
+                        SequentialAnimation on opacity {
+                            running: control.isPlaying
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0.26; to: 0.02; duration: 1900; easing.type: Easing.OutQuad }
+                        }
+                    }
+                }
 
                 Rectangle {
                     id: artCircle
@@ -195,19 +266,87 @@ Item {
                 Layout.preferredWidth: 40
             }
 
-            Slider {
-                id: seekSlider
+            Item {
                 Layout.fillWidth: true
-                from: 0
-                to: Math.max(control.trackLengthUs, 1)
-                stepSize: Math.max(1, Math.max(control.trackLengthUs, 1) / 400)
+                implicitHeight: 26
 
-                palette.mid: NemacUI.Theme.darkMode ? "#3a3a42" : "#d0d0d8"
-                palette.highlight: NemacUI.Theme.highlightColor
+                Canvas {
+                    id: waveCanvas
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 16
+                    opacity: 0.9
+                    antialiasing: true
 
-                onPressedChanged: {
-                    if (!pressed)
-                        mprisManager.setPosition(Math.round(value))
+                    Connections {
+                        target: seekSlider
+                        function onValueChanged() { waveCanvas.requestPaint() }
+                        function onToChanged() { waveCanvas.requestPaint() }
+                        function onPressedChanged() { waveCanvas.requestPaint() }
+                    }
+
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+
+                        var w = width
+                        var h = height
+                        if (w <= 1 || h <= 1)
+                            return
+
+                        var mid = h / 2
+                        var progress = seekSlider.to > 0 ? Math.max(0, Math.min(1, seekSlider.value / seekSlider.to)) : 0
+                        var progX = w * progress
+
+                        var baseR = NemacUI.Theme.highlightColor.r
+                        var baseG = NemacUI.Theme.highlightColor.g
+                        var baseB = NemacUI.Theme.highlightColor.b
+
+                        ctx.lineWidth = 2
+                        ctx.strokeStyle = "rgba(" + Math.round(baseR * 255) + "," + Math.round(baseG * 255) + "," + Math.round(baseB * 255) + ",0.22)"
+                        ctx.beginPath()
+                        ctx.moveTo(0, mid)
+                        ctx.lineTo(w, mid)
+                        ctx.stroke()
+
+                        if (progX < 2)
+                            return
+
+                        var amp = control.isPlaying ? 2.4 : 1.1
+                        var wavelength = 22
+
+                        ctx.strokeStyle = "rgba(" + Math.round(baseR * 255) + "," + Math.round(baseG * 255) + "," + Math.round(baseB * 255) + ",0.92)"
+                        ctx.beginPath()
+                        for (var x = 0; x <= progX; x += 1) {
+                            var y = mid + Math.sin((x / wavelength) * 2 * Math.PI + control.wavePhase) * amp
+                            if (x === 0)
+                                ctx.moveTo(x, y)
+                            else
+                                ctx.lineTo(x, y)
+                        }
+                        ctx.stroke()
+                    }
+                }
+
+                Slider {
+                    id: seekSlider
+                    anchors.fill: parent
+                    from: 0
+                    to: Math.max(control.trackLengthUs, 1)
+                    stepSize: Math.max(1, Math.max(control.trackLengthUs, 1) / 400)
+
+                    palette.mid: NemacUI.Theme.darkMode ? "#3a3a42" : "#d0d0d8"
+                    palette.highlight: NemacUI.Theme.highlightColor
+
+                    onPressedChanged: {
+                        waveCanvas.requestPaint()
+                        if (!pressed)
+                            mprisManager.setPosition(Math.round(value))
+                    }
                 }
             }
 
