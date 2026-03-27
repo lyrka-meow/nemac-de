@@ -29,10 +29,6 @@ import "../"
 ItemPage {
     headerTitle: qsTr("Appearance")
 
-    Appearance {
-        id: appearance
-    }
-
     Scrollable {
         anchors.fill: parent
         contentHeight: layout.implicitHeight
@@ -57,14 +53,14 @@ ItemPage {
                         source: "qrc:/images/light_mode.svg"
                         text: qsTr("Light")
                         checked: !NemacUI.Theme.darkMode
-                        onClicked: appearance.switchDarkMode(false)
+                        onClicked: Appearance.switchDarkMode(false)
                     }
 
                     IconCheckBox {
                         source: "qrc:/images/dark_mode.svg"
                         text: qsTr("Dark")
                         checked: NemacUI.Theme.darkMode
-                        onClicked: appearance.switchDarkMode(true)
+                        onClicked: Appearance.switchDarkMode(true)
                     }
                 }
 
@@ -85,10 +81,10 @@ ItemPage {
                     }
 
                     Switch {
-                        checked: appearance.dimsWallpaper
+                        checked: Appearance.dimsWallpaper
                         height: dimsTipsLabel.height
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        onCheckedChanged: appearance.setDimsWallpaper(checked)
+                        onCheckedChanged: Appearance.setDimsWallpaper(checked)
                         rightPadding: 0
                     }
                 }
@@ -104,10 +100,10 @@ ItemPage {
                     }
 
                     Switch {
-                        checked: appearance.systemEffects
+                        checked: Appearance.systemEffects
                         Layout.fillHeight: true
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        onCheckedChanged: appearance.systemEffects = checked
+                        onCheckedChanged: Appearance.systemEffects = checked
                         rightPadding: 0
                     }
                 }
@@ -123,8 +119,8 @@ ItemPage {
 
                     TabBar {
                         Layout.fillWidth: true
-                        currentIndex: appearance.minimiumAnimation
-                        onCurrentIndexChanged: appearance.minimiumAnimation = currentIndex
+                        currentIndex: Appearance.minimiumAnimation
+                        onCurrentIndexChanged: Appearance.minimiumAnimation = currentIndex
 
                         TabButton {
                             text: qsTr("Default")
@@ -145,41 +141,26 @@ ItemPage {
                         text: qsTr("Window mode")
                     }
 
-                    TabBar {
-                        id: windowModeBar
+                    RowLayout {
                         Layout.fillWidth: true
-                        property bool syncing: false
-                        Connections {
-                            target: appearance
-                            onWindowModeChanged: {
-                                syncing = true
-                                windowModeBar.currentIndex = appearance.windowMode
-                                syncing = false
-                            }
-                        }
-                        Component.onCompleted: {
-                            syncing = true
-                            windowModeBar.currentIndex = appearance.windowMode
-                            syncing = false
-                        }
-                        onCurrentIndexChanged: {
-                            if (!syncing)
-                                appearance.windowMode = currentIndex
-                        }
-
-                        TabButton {
+                        spacing: NemacUI.Units.smallSpacing
+                        ToolButton {
                             text: qsTr("Floating")
-                            onClicked: appearance.windowMode = 0
+                            flat: true
+                            highlighted: Appearance.windowMode === 0
+                            onClicked: Appearance.windowMode = 0
                         }
-
-                        TabButton {
+                        ToolButton {
                             text: qsTr("Tiling")
-                            onClicked: appearance.windowMode = 1
+                            flat: true
+                            highlighted: Appearance.windowMode === 1
+                            onClicked: Appearance.windowMode = 1
                         }
-
-                        TabButton {
+                        ToolButton {
                             text: qsTr("Scrolling")
-                            onClicked: appearance.windowMode = 2
+                            flat: true
+                            highlighted: Appearance.windowMode === 2
+                            onClicked: Appearance.windowMode = 2
                         }
                     }
                 }
@@ -225,7 +206,7 @@ ItemPage {
                             id: _mouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: appearance.setAccentColor(index)
+                            onClicked: Appearance.setAccentColor(index)
                         }
 
                         Rectangle {

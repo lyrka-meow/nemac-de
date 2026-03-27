@@ -28,10 +28,6 @@ import "../"
 ItemPage {
     headerTitle: qsTr("Display")
 
-    Appearance {
-        id: appearance
-    }
-
     Brightness {
         id: brightness
     }
@@ -346,15 +342,15 @@ ItemPage {
                     currentIndex: {
                         var index = 0
 
-                        if (appearance.devicePixelRatio <= 1.0)
+                        if (Appearance.devicePixelRatio <= 1.0)
                             index = 0
-                        else if (appearance.devicePixelRatio <= 1.25)
+                        else if (Appearance.devicePixelRatio <= 1.25)
                             index = 1
-                        else if (appearance.devicePixelRatio <= 1.50)
+                        else if (Appearance.devicePixelRatio <= 1.50)
                             index = 2
-                        else if (appearance.devicePixelRatio <= 1.75)
+                        else if (Appearance.devicePixelRatio <= 1.75)
                             index = 3
-                        else if (appearance.devicePixelRatio <= 2.0)
+                        else if (Appearance.devicePixelRatio <= 2.0)
                             index = 4
 
                         return index
@@ -381,8 +377,8 @@ ItemPage {
                             break;
                         }
 
-                        if (appearance.devicePixelRatio !== value) {
-                            appearance.setDevicePixelRatio(value)
+                        if (Appearance.devicePixelRatio !== value) {
+                            Appearance.setDevicePixelRatio(value)
                         }
                     }
                 }

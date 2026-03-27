@@ -27,10 +27,6 @@ import "../"
 ItemPage {
     headerTitle: qsTr("Dock")
 
-    Appearance {
-        id: appearance
-    }
-
     Scrollable {
         anchors.fill: parent
         contentHeight: layout.implicitHeight
@@ -52,15 +48,15 @@ ItemPage {
                     IconCheckBox {
                         source: "qrc:/images/dock_bottom.svg"
                         text: qsTr("Center")
-                        checked: appearance.dockStyle === 0
-                        onClicked: appearance.setDockStyle(0)
+                        checked: Appearance.dockStyle === 0
+                        onClicked: Appearance.setDockStyle(0)
                     }
 
                     IconCheckBox {
                         source: "qrc:/images/dock_straight.svg"
                         text: qsTr("Full")
-                        checked: appearance.dockStyle === 1
-                        onClicked: appearance.setDockStyle(1)
+                        checked: Appearance.dockStyle === 1
+                        onClicked: Appearance.setDockStyle(1)
                     }
                 }
             }
@@ -78,22 +74,22 @@ ItemPage {
                     IconCheckBox {
                         source: "qrc:/images/dock_left.svg"
                         text: qsTr("Left")
-                        checked: appearance.dockDirection === 0
-                        onClicked: appearance.setDockDirection(0)
+                        checked: Appearance.dockDirection === 0
+                        onClicked: Appearance.setDockDirection(0)
                     }
 
                     IconCheckBox {
                         source: "qrc:/images/dock_bottom.svg"
                         text: qsTr("Bottom")
-                        checked: appearance.dockDirection === 1
-                        onClicked: appearance.setDockDirection(1)
+                        checked: Appearance.dockDirection === 1
+                        onClicked: Appearance.setDockDirection(1)
                     }
 
                     IconCheckBox {
                         source: "qrc:/images/dock_right.svg"
                         text: qsTr("Right")
-                        checked: appearance.dockDirection === 2
-                        onClicked: appearance.setDockDirection(2)
+                        checked: Appearance.dockDirection === 2
+                        onClicked: Appearance.setDockDirection(2)
                     }
                 }
             }
@@ -129,13 +125,13 @@ ItemPage {
                     currentIndex: {
                         var index = 0
 
-                        if (appearance.dockIconSize <= 45)
+                        if (Appearance.dockIconSize <= 45)
                             index = 0
-                        else if (appearance.dockIconSize <= 53)
+                        else if (Appearance.dockIconSize <= 53)
                             index = 1
-                        else if (appearance.dockIconSize <= 63)
+                        else if (Appearance.dockIconSize <= 63)
                             index = 2
-                        else if (appearance.dockIconSize <= 72)
+                        else if (Appearance.dockIconSize <= 72)
                             index = 3
 
                         return index
@@ -159,7 +155,7 @@ ItemPage {
                             break;
                         }
 
-                        appearance.setDockIconSize(iconSize)
+                        Appearance.setDockIconSize(iconSize)
                     }
                 }
             }
@@ -173,8 +169,8 @@ ItemPage {
 
                 TabBar {
                     Layout.fillWidth: true
-                    currentIndex: appearance.dockVisibility
-                    onCurrentIndexChanged: appearance.setDockVisibility(currentIndex)
+                    currentIndex: Appearance.dockVisibility
+                    onCurrentIndexChanged: Appearance.setDockVisibility(currentIndex)
 
                     TabButton {
                         text: qsTr("Always show")

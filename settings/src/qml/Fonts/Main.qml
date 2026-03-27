@@ -30,10 +30,6 @@ ItemPage {
     id: control
     headerTitle: qsTr("Fonts")
 
-    Appearance {
-        id: appearance
-    }
-
     FontsModel {
         id: fontsModel
     }
@@ -102,7 +98,7 @@ ItemPage {
                         bottomInset: 0
                         leftPadding: NemacUI.Units.largeSpacing
                         rightPadding: NemacUI.Units.largeSpacing
-                        onActivated: appearance.setGenericFontFamily(currentText)
+                        onActivated: Appearance.setGenericFontFamily(currentText)
                     }
 
                     Label {
@@ -119,7 +115,7 @@ ItemPage {
                         bottomInset: 0
                         leftPadding: NemacUI.Units.largeSpacing
                         rightPadding: NemacUI.Units.largeSpacing
-                        onActivated: appearance.setFixedFontFamily(currentText)
+                        onActivated: Appearance.setFixedFontFamily(currentText)
                     }
 
                     Label {
@@ -149,13 +145,13 @@ ItemPage {
                         currentIndex: {
                             var index = 0
 
-                            if (appearance.fontPointSize <= 9)
+                            if (Appearance.fontPointSize <= 9)
                                 index = 0
-                            else if (appearance.fontPointSize <= 10)
+                            else if (Appearance.fontPointSize <= 10)
                                 index = 1
-                            else if (appearance.fontPointSize <= 12)
+                            else if (Appearance.fontPointSize <= 12)
                                 index = 2
-                            else if (appearance.fontPointSize <= 15)
+                            else if (Appearance.fontPointSize <= 15)
                                 index = 3
 
                             return index
@@ -179,7 +175,7 @@ ItemPage {
                                 break;
                             }
 
-                            appearance.setFontPointSize(fontSize)
+                            Appearance.setFontPointSize(fontSize)
                         }
                     }
 

@@ -28,6 +28,15 @@
 #include "datetime/time.h"
 #include "datetime/timezonemap.h"
 
+#include <QQmlEngine>
+
+static QObject *appearanceSingleton(QQmlEngine *engine, QJSEngine *scriptEngine)
+{
+    Q_UNUSED(engine);
+    Q_UNUSED(scriptEngine);
+    return new Appearance();
+}
+
 static QObject *passwordSingleton(QQmlEngine *engine, QJSEngine *scriptEngine)
 {
     Q_UNUSED(engine);
@@ -65,7 +74,7 @@ Application::Application(int &argc, char **argv)
 
     // QML
     const char *uri = "Nemac.Settings";
-    qmlRegisterType<Appearance>(uri, 1, 0, "Appearance");
+    qmlRegisterSingletonType<Appearance>(uri, 1, 0, "Appearance", appearanceSingleton);
     qmlRegisterType<FontsModel>(uri, 1, 0, "FontsModel");
     qmlRegisterType<Brightness>(uri, 1, 0, "Brightness");
     qmlRegisterType<Battery>(uri, 1, 0, "Battery");

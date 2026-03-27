@@ -30,6 +30,7 @@
 #include <QDBusPendingCall>
 
 #include <QStandardPaths>
+#include <QTimer>
 #include <QDebug>
 
 Appearance::Appearance(QObject *parent)
@@ -313,13 +314,18 @@ void Appearance::setWindowMode(int windowMode)
         m_kwinSettings->endGroup();
         m_kwinSettings->sync();
 
-        KSharedConfig::Ptr kwinCfg = KSharedConfig::openConfig(QStringLiteral("kwinrc"));
+        const QString kwinrcPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+            + QStringLiteral("/kwinrc");
+        KSharedConfig::Ptr kwinCfg = KSharedConfig::openConfig(kwinrcPath);
         KConfigGroup plugins(kwinCfg, QStringLiteral("Plugins"));
         plugins.writeEntry(QStringLiteral("nemactilingEnabled"), m_windowMode == 1);
         plugins.writeEntry(QStringLiteral("nemacscrollingEnabled"), m_windowMode == 2);
         plugins.sync();
 
-        nemac_apply_kwin_window_mode(m_windowMode);
+        const int mode = m_windowMode;
+        QTimer::singleShot(0, this, [mode]() {
+            nemac_apply_kwin_window_mode(mode);
+        });
         emit windowModeChanged();
     }
 }
