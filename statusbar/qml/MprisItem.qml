@@ -48,17 +48,17 @@ Item {
     Rectangle {
         id: panelBg
         anchors.fill: parent
-        radius: 28
-        color: NemacUI.Theme.darkMode ? "#1a1a1a" : "#FFFFFF"
+        radius: 30
+        color: NemacUI.Theme.darkMode ? "#121212" : "#FFFFFF"
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.1)
+        border.color: Qt.rgba(1, 1, 1, 0.08)
         
         layer.enabled: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: panelBg.width
                 height: panelBg.height
-                radius: 28
+                radius: 30
             }
         }
 
@@ -67,22 +67,22 @@ Item {
             anchors.fill: parent
             source: control.artUrl ? control.artUrl : "qrc:/images/media-cover.svg"
             fillMode: Image.PreserveAspectCrop
-            opacity: 0.35
+            opacity: 0.5
             visible: control.artUrl !== ""
         }
 
         FastBlur {
             anchors.fill: bgBlurImage
             source: bgBlurImage
-            radius: 40
+            radius: 50
         }
 
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.7; color: Qt.rgba(0,0,0, 0.2) }
-                GradientStop { position: 1.0; color: NemacUI.Theme.darkMode ? "#1a1a1a" : "#f0f0f0" }
+                GradientStop { position: 0.0; color: Qt.rgba(0,0,0, 0.4) }
+                GradientStop { position: 0.6; color: Qt.rgba(0,0,0, 0.7) }
+                GradientStop { position: 1.0; color: NemacUI.Theme.darkMode ? "#121212" : "#f5f5f5" }
             }
         }
     }
@@ -91,18 +91,23 @@ Item {
         id: mainColumn
         anchors.fill: parent
         anchors.margins: contentMargin
-        spacing: 16
+        spacing: 14
 
         Item {
             id: discSection
             Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 8
             width: 200; height: 200
 
-            Glow {
+            DropShadow {
                 anchors.fill: discRotationContainer
-                radius: 25
-                samples: 35
-                color: Qt.rgba(NemacUI.Theme.highlightColor.r, NemacUI.Theme.highlightColor.g, NemacUI.Theme.highlightColor.b, 0.6)
+                horizontalOffset: 0
+                verticalOffset: 0
+                radius: 30
+                samples: 40
+                color: Qt.rgba(NemacUI.Theme.highlightColor.r, 
+                               NemacUI.Theme.highlightColor.g, 
+                               NemacUI.Theme.highlightColor.b, 0.5)
                 source: discRotationContainer
                 visible: control.isPlaying
             }
@@ -113,7 +118,7 @@ Item {
 
                 RotationAnimation on rotation {
                     id: discAnimation
-                    from: 0; to: 360; duration: 10000
+                    from: 0; to: 360; duration: 25000
                     loops: Animation.Infinite
                     running: control.isPlaying
                 }
@@ -122,14 +127,17 @@ Item {
                     id: discImgContainer
                     anchors.fill: parent
                     radius: 100
-                    color: "#000000"
+                    color: "#080808"
                     clip: true
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
 
                     Image {
                         id: albumArt
                         anchors.fill: parent
                         source: control.artUrl ? control.artUrl : "qrc:/images/media-cover.svg"
                         fillMode: Image.PreserveAspectCrop
+                        opacity: 0.95
                         
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -139,17 +147,15 @@ Item {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 36; height: 36
-                        radius: 18
-                        color: "#111111"
-                        border.width: 4
-                        border.color: "#000000"
-
+                        width: 34; height: 34
+                        radius: 17
+                        color: "#000000"
+                        
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 8; height: 8
-                            radius: 4
-                            color: "#222222"
+                            width: 10; height: 10
+                            radius: 5
+                            color: "#1a1a1a"
                         }
                     }
                 }
@@ -158,30 +164,31 @@ Item {
 
         Column {
             Layout.fillWidth: true
-            spacing: 2
+            Layout.topMargin: 4
+            spacing: 4
             Label {
-                text: control.title || "Unknown Track"
+                text: control.title || "No Media"
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 22
+                font.pixelSize: 24
                 font.weight: Font.Bold
-                color: NemacUI.Theme.textColor
+                color: "#FFFFFF"
                 elide: Text.ElideRight
             }
             Label {
                 text: control.artist || "Unknown Artist"
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 14
-                opacity: 0.7
-                color: NemacUI.Theme.textColor
+                font.pixelSize: 15
+                opacity: 0.6
+                color: "#FFFFFF"
                 elide: Text.ElideRight
             }
         }
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 6
 
             Slider {
                 id: seekSlider
@@ -193,16 +200,16 @@ Item {
                 background: Rectangle {
                     x: seekSlider.leftPadding
                     y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
-                    implicitHeight: 6
+                    implicitHeight: 4
                     width: seekSlider.availableWidth
                     height: implicitHeight
-                    radius: 3
-                    color: Qt.rgba(NemacUI.Theme.textColor.r, NemacUI.Theme.textColor.g, NemacUI.Theme.textColor.b, 0.1)
+                    radius: 2
+                    color: Qt.rgba(1, 1, 1, 0.1)
 
                     Rectangle {
                         width: seekSlider.visualPosition * parent.width
                         height: parent.height
-                        radius: 3
+                        radius: 2
                         color: NemacUI.Theme.highlightColor
                     }
                 }
@@ -210,10 +217,9 @@ Item {
                 handle: Rectangle {
                     x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
                     y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 14; implicitHeight: 14; radius: 7
+                    implicitWidth: 12; implicitHeight: 12; radius: 6
                     color: "#FFFFFF"
-                    border.color: NemacUI.Theme.highlightColor
-                    border.width: 2
+                    antialiasing: true
                 }
 
                 onMoved: mprisManager.setPosition(Math.round(value))
@@ -221,57 +227,69 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: formatTime(seekSlider.value); font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor }
+                Label { text: formatTime(seekSlider.value); font.pixelSize: 11; opacity: 0.5; color: "#FFFFFF" }
                 Item { Layout.fillWidth: true }
-                Label { text: formatTime(seekSlider.to); font.pixelSize: 11; opacity: 0.5; color: NemacUI.Theme.textColor }
+                Label { text: formatTime(seekSlider.to); font.pixelSize: 11; opacity: 0.5; color: "#FFFFFF" }
             }
         }
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 40
+            Layout.bottomMargin: 4
+            spacing: 45
 
             IconButton {
-                implicitWidth: 38; implicitHeight: 38
-                source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-backward-symbolic.svg"
+                implicitWidth: 36; implicitHeight: 36
+                source: "qrc:/images/dark/media-skip-backward-symbolic.svg"
+                opacity: mouseArea_back.containsMouse ? 1.0 : 0.7
                 onLeftButtonClicked: mprisManager.previous()
+                MouseArea { id: mouseArea_back; anchors.fill: parent; hoverEnabled: true; onEntered: parent.scale = 1.1; onExited: parent.scale = 1.0 }
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
             }
 
             Rectangle {
                 id: playBtn
-                width: 68; height: 68
-                radius: 34
+                width: 72; height: 72
+                radius: 36
                 color: NemacUI.Theme.highlightColor
                 
                 layer.enabled: true
                 layer.effect: DropShadow {
-                    radius: 14; samples: 25; verticalOffset: 4
+                    radius: 20; samples: 30; verticalOffset: 6
                     color: Qt.rgba(NemacUI.Theme.highlightColor.r, 
                                    NemacUI.Theme.highlightColor.g, 
-                                   NemacUI.Theme.highlightColor.b, 0.4) 
+                                   NemacUI.Theme.highlightColor.b, 0.45) 
                 }
 
                 Image {
                     anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: control.isPlaying ? 0 : 2
-                    width: 28; height: 28
+                    anchors.horizontalCenterOffset: control.isPlaying ? 0 : 3
+                    width: 30; height: 30
                     source: control.isPlaying ? "qrc:/images/dark/media-playback-pause-symbolic.svg" 
                                               : "qrc:/images/dark/media-playback-start-symbolic.svg"
                 }
 
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
                     onClicked: mprisManager.playPause()
-                    onPressed: playBtn.scale = 0.92
-                    onReleased: playBtn.scale = 1.0
+                    onPressed: playBtn.scale = 0.88
+                    onReleased: playBtn.scale = 1.05
+                    onEntered: playBtn.scale = 1.05
+                    onExited: playBtn.scale = 1.0
                 }
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
             }
 
             IconButton {
-                implicitWidth: 38; implicitHeight: 38
-                source: "qrc:/images/" + (NemacUI.Theme.darkMode ? "dark" : "light") + "/media-skip-forward-symbolic.svg"
+                implicitWidth: 36; implicitHeight: 36
+                source: "qrc:/images/dark/media-skip-forward-symbolic.svg"
+                opacity: mouseArea_next.containsMouse ? 1.0 : 0.7
                 onLeftButtonClicked: mprisManager.next()
+                MouseArea { id: mouseArea_next; anchors.fill: parent; hoverEnabled: true; onEntered: parent.scale = 1.1; onExited: parent.scale = 1.0 }
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
             }
         }
     }
